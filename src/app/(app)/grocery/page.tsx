@@ -3,6 +3,9 @@ import { useEffect, useState } from "react";
 import { createClient } from "@/utils/supabase/client";
 
 const CATEGORY_ORDER = ["Protein", "Produce", "Dairy", "Grains", "Pantry", "Other"];
+const CATEGORY_ICONS: Record<string, string> = {
+  Protein: "🥩", Produce: "🥦", Dairy: "🥛", Grains: "🌾", Pantry: "🫙", Other: "🛒",
+};
 
 export default function GroceryPage() {
   const [items, setItems] = useState<any[]>([]);
@@ -13,12 +16,7 @@ export default function GroceryPage() {
     const load = async () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
-      const { data } = await supabase
-        .from("grocery_items")
-        .select("*")
-        .eq("user_id", user.id)
-        .order("category")
-        .order("name");
+      const { data } = await supabase.from("grocery_items").select("*").eq("user_id", user.id).order("category").order("name");
       setItems(data || []);
       setLoading(false);
     };
@@ -44,66 +42,120 @@ export default function GroceryPage() {
   }, {} as Record<string, any[]>);
 
   const checkedCount = items.filter((i) => i.is_checked).length;
+  const remaining = items.length - checkedCount;
 
-  if (loading) return <div className="flex items-center justify-center h-64 text-gray-400 text-sm">Loading...</div>;
+  if (loading) return (
+    <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "200px", color: "#A89880", fontSize: "14px" }}>
+      Loading...
+    </div>
+  );
 
   return (
-    <div className="px-5 pt-12 pb-6">
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h1 className="text-2xl font-extrabold text-gray-900 tracking-tight">Grocery List</h1>
-          {items.length > 0 && (
-            <p className="text-sm text-gray-400 mt-0.5">{items.length - checkedCount} items remaining</p>
+    <div style={{ minHeight: "100vh", background: "#FAF8F4", paddingBottom: "calc(80px + env(safe-area-inset-bottom, 0px))" }}>
+      {/* Header */}
+      <div style={{ background: "linear-gradient(180deg, #F5EDE0 0%, #FAF8F4 100%)", padding: "20px 20px 20px" }}>
+        <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between" }}>
+          <div>
+            <h1 className="serif" style={{ fontSize: "34px", fontWeight: 400, letterSpacing: "-0.02em", color: "#1A1612", lineHeight: 1.1 }}>
+              Grocery List
+            </h1>
+            {items.length > 0 && (
+              <p style={{ color: "#A89880", fontSize: "13px", marginTop: "4px" }}>
+                {remaining} item{remaining !== 1 ? "s" : ""} remaining
+              </p>
+            )}
+          </div>
+          {checkedCount > 0 && (
+            <button
+              onClick={clearChecked}
+              style={{
+                fontSize: "12px", color: "#C0392B", fontWeight: 600,
+                background: "#FEF2EE", border: "1px solid rgba(192,57,43,0.15)",
+                borderRadius: "8px", padding: "6px 12px", cursor: "pointer",
+                fontFamily: "Inter, sans-serif",
+              }}
+            >
+              Clear {checkedCount} ✓
+            </button>
           )}
         </div>
-        {checkedCount > 0 && (
-          <button onClick={clearChecked} className="text-xs text-red-400 font-medium">
-            Clear {checkedCount} ✓
-          </button>
-        )}
       </div>
 
-      {!items.length ? (
-        <div className="text-center py-20">
-          <div className="text-5xl mb-4">🛒</div>
-          <p className="text-gray-500 text-sm">No grocery list yet.</p>
-          <p className="text-gray-400 text-xs mt-1">Plan your week and generate a list from the Planner.</p>
-          <a href="/planner" className="inline-block mt-4 bg-orange-500 text-white text-sm font-semibold px-5 py-2.5 rounded-xl">
-            Go to Planner
-          </a>
-        </div>
-      ) : (
-        <div className="space-y-5">
-          {Object.entries(grouped).map(([category, catItems]) => (
-            <div key={category}>
-              <h2 className="text-xs font-bold text-gray-400 uppercase tracking-wide mb-2">{category}</h2>
-              <div className="bg-white rounded-2xl border border-gray-100 divide-y divide-gray-50 overflow-hidden">
-                {catItems.map((item) => (
-                  <button
-                    key={item.id}
-                    onClick={() => toggleItem(item.id, item.is_checked)}
-                    className="w-full flex items-center gap-3 px-4 py-3 text-left active:bg-gray-50 transition-colors"
-                  >
-                    <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition-colors ${
-                      item.is_checked ? "bg-orange-500 border-orange-500" : "border-gray-300"
-                    }`}>
-                      {item.is_checked && <span className="text-white text-xs font-bold">✓</span>}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className={`text-sm font-medium capitalize transition-colors ${item.is_checked ? "line-through text-gray-300" : "text-gray-800"}`}>
-                        {item.name}
-                      </p>
-                      {(item.amount || item.unit) && (
-                        <p className="text-xs text-gray-400">{item.amount} {item.unit}</p>
-                      )}
-                    </div>
-                  </button>
-                ))}
+      <div style={{ padding: "12px 16px 0", maxWidth: "480px", margin: "0 auto" }}>
+        {!items.length ? (
+          <div style={{ textAlign: "center", paddingTop: "80px" }}>
+            <div style={{ fontSize: "56px", marginBottom: "16px" }}>🛒</div>
+            <p style={{ color: "#1A1612", fontSize: "18px", fontWeight: 600, marginBottom: "6px" }}>No grocery list yet</p>
+            <p style={{ color: "#A89880", fontSize: "14px", marginBottom: "28px" }}>
+              Plan your week and generate a list from the Planner
+            </p>
+            <a href="/planner" style={{
+              display: "inline-flex", alignItems: "center", gap: "8px",
+              background: "#D4522A", color: "white", fontWeight: 600,
+              padding: "13px 24px", borderRadius: "12px", textDecoration: "none", fontSize: "14px",
+              boxShadow: "0 4px 16px rgba(212,82,42,0.25)",
+            }}>
+              Go to Planner
+            </a>
+          </div>
+        ) : (
+          <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+            {Object.entries(grouped).map(([category, catItems]) => (
+              <div key={category}>
+                <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "8px" }}>
+                  <span style={{ fontSize: "14px" }}>{CATEGORY_ICONS[category]}</span>
+                  <span className="section-label">{category}</span>
+                </div>
+                <div style={{
+                  background: "white", border: "1px solid #E8E3D8", borderRadius: "18px",
+                  overflow: "hidden", boxShadow: "0 1px 4px rgba(26,22,18,0.05)",
+                }}>
+                  {(catItems as any[]).map((item, idx) => (
+                    <button
+                      key={item.id}
+                      onClick={() => toggleItem(item.id, item.is_checked)}
+                      style={{
+                        width: "100%", display: "flex", alignItems: "center", gap: "14px",
+                        padding: "14px 16px", textAlign: "left", background: "none", border: "none",
+                        borderTop: idx > 0 ? "1px solid #F0EDE6" : "none",
+                        cursor: "pointer", fontFamily: "Inter, sans-serif", transition: "background 0.1s ease",
+                      }}
+                    >
+                      <div style={{
+                        width: "22px", height: "22px", borderRadius: "50%",
+                        border: `2px solid ${item.is_checked ? "#D4522A" : "#C4B8A8"}`,
+                        background: item.is_checked ? "#D4522A" : "transparent",
+                        display: "flex", alignItems: "center", justifyContent: "center",
+                        flexShrink: 0, transition: "all 0.15s ease",
+                      }}>
+                        {item.is_checked && (
+                          <svg width="10" height="8" viewBox="0 0 10 8" fill="none">
+                            <path d="M1 4L3.5 6.5L9 1" stroke="white" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+                          </svg>
+                        )}
+                      </div>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <p style={{
+                          fontSize: "14px", fontWeight: 500, color: item.is_checked ? "#C4B8A8" : "#1A1612",
+                          textDecoration: item.is_checked ? "line-through" : "none",
+                          textTransform: "capitalize", transition: "all 0.15s ease",
+                        }}>
+                          {item.name}
+                        </p>
+                        {(item.amount || item.unit) && (
+                          <p style={{ fontSize: "12px", color: "#A89880", marginTop: "1px" }}>
+                            {item.amount} {item.unit}
+                          </p>
+                        )}
+                      </div>
+                    </button>
+                  ))}
+                </div>
               </div>
-            </div>
-          ))}
-        </div>
-      )}
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   );
 }

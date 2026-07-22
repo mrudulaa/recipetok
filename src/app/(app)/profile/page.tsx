@@ -45,55 +45,54 @@ export default function ProfilePage() {
   };
 
   const macroItems = goals ? [
-    { label: "Calories", value: goals.daily_calories, unit: "kcal", color: "#E8773A" },
-    { label: "Protein", value: goals.daily_protein, unit: "g", color: "#5CB87A" },
-    { label: "Carbs", value: goals.daily_carbs, unit: "g", color: "#E8B73A" },
-    { label: "Fat", value: goals.daily_fat, unit: "g", color: "#7A8EE8" },
+    { label: "Calories", value: goals.daily_calories, unit: "kcal", color: "#D4522A", bg: "#FEF2EE" },
+    { label: "Protein", value: goals.daily_protein, unit: "g", color: "#4A7C59", bg: "#EEF5F1" },
+    { label: "Carbs", value: goals.daily_carbs, unit: "g", color: "#B8860B", bg: "#FDF8EC" },
+    { label: "Fat", value: goals.daily_fat, unit: "g", color: "#5B6FA8", bg: "#EEF0F8" },
   ] : [];
 
   return (
-    <div style={{
-      minHeight: "100vh",
-      background: "var(--bg-primary)",
-      paddingBottom: "calc(80px + env(safe-area-inset-bottom, 0px))",
-      position: "relative",
-    }}>
-      <div style={{ position: "relative", zIndex: 1, maxWidth: "480px", margin: "0 auto", padding: "20px 16px 0" }}>
-        <h1 style={{ fontSize: "28px", fontWeight: 800, letterSpacing: "-0.03em", color: "var(--text-primary)", marginBottom: "24px" }}>
+    <div style={{ minHeight: "100vh", background: "#FAF8F4", paddingBottom: "calc(80px + env(safe-area-inset-bottom, 0px))" }}>
+      {/* Header */}
+      <div style={{
+        background: "linear-gradient(180deg, #F5EDE0 0%, #FAF8F4 100%)",
+        padding: "20px 20px 20px",
+      }}>
+        <h1 className="serif" style={{
+          fontSize: "34px", fontWeight: 400, letterSpacing: "-0.02em",
+          color: "#1A1612", lineHeight: 1.1,
+        }}>
           Profile
         </h1>
+      </div>
 
+      <div style={{ padding: "12px 16px 0", maxWidth: "480px", margin: "0 auto" }}>
         {/* User card */}
         {user && (
           <div style={{
-            background: "rgba(255,255,255,0.04)",
-            border: "1px solid rgba(255,255,255,0.08)",
-            borderRadius: "18px",
-            padding: "16px",
-            display: "flex",
-            alignItems: "center",
-            gap: "14px",
-            marginBottom: "20px",
+            background: "white", border: "1px solid #E8E3D8", borderRadius: "18px",
+            padding: "16px", display: "flex", alignItems: "center", gap: "14px",
+            marginBottom: "20px", boxShadow: "0 1px 4px rgba(26,22,18,0.05)",
           }}>
             <div style={{
               width: "44px", height: "44px", borderRadius: "12px",
-              background: "linear-gradient(135deg, #E8773A, #F09060)",
+              background: "#D4522A",
               display: "flex", alignItems: "center", justifyContent: "center",
               color: "white", fontWeight: 700, fontSize: "18px", flexShrink: 0,
             }}>
               {user.email?.[0]?.toUpperCase()}
             </div>
             <div style={{ flex: 1, minWidth: 0 }}>
-              <p style={{ fontSize: "14px", fontWeight: 600, color: "var(--text-primary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+              <p style={{ fontSize: "14px", fontWeight: 600, color: "#1A1612", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                 {user.email}
               </p>
-              <p style={{ fontSize: "12px", color: "var(--text-muted)", marginTop: "2px" }}>RecipeTok account</p>
+              <p style={{ fontSize: "12px", color: "#A89880", marginTop: "2px" }}>RecipeTok account</p>
             </div>
             <button
               onClick={signOut}
               style={{
-                fontSize: "12px", color: "#E85A3A", fontWeight: 600,
-                background: "rgba(232,90,58,0.1)", border: "1px solid rgba(232,90,58,0.2)",
+                fontSize: "12px", color: "#C0392B", fontWeight: 600,
+                background: "#FEF2EE", border: "1px solid rgba(192,57,43,0.15)",
                 borderRadius: "8px", padding: "6px 12px", cursor: "pointer",
                 fontFamily: "Inter, sans-serif",
               }}
@@ -104,47 +103,29 @@ export default function ProfilePage() {
         )}
 
         {/* Daily Goals */}
-        <p style={{ fontSize: "11px", fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--text-muted)", marginBottom: "10px" }}>
-          Daily Goals
-        </p>
+        <p className="section-label" style={{ marginBottom: "10px" }}>Daily Goals</p>
         {goals ? (
           <div style={{
-            background: "rgba(255,255,255,0.04)",
-            border: "1px solid rgba(255,255,255,0.08)",
-            borderRadius: "18px",
-            padding: "16px",
-            marginBottom: "20px",
+            background: "white", border: "1px solid #E8E3D8", borderRadius: "18px",
+            padding: "18px", marginBottom: "20px", boxShadow: "0 1px 4px rgba(26,22,18,0.05)",
           }}>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px", marginBottom: "14px" }}>
               {macroItems.map((m) => (
                 <div key={m.label} style={{
-                  background: `${m.color}12`,
-                  border: `1px solid ${m.color}25`,
-                  borderRadius: "12px",
-                  padding: "12px",
+                  background: m.bg, borderRadius: "12px", padding: "12px",
                 }}>
-                  <p style={{ fontSize: "22px", fontWeight: 700, color: m.color, letterSpacing: "-0.02em" }}>
+                  <p style={{ fontSize: "22px", fontWeight: 700, color: m.color, letterSpacing: "-0.02em", fontFamily: "Inter, sans-serif" }}>
                     {m.value}
-                    <span style={{ fontSize: "12px", fontWeight: 400, color: "var(--text-muted)", marginLeft: "2px" }}>{m.unit}</span>
+                    <span style={{ fontSize: "11px", fontWeight: 400, color: "#A89880", marginLeft: "2px" }}>{m.unit}</span>
                   </p>
-                  <p style={{ fontSize: "11px", color: "var(--text-muted)", marginTop: "2px" }}>{m.label}</p>
+                  <p style={{ fontSize: "11px", color: "#6B5E52", marginTop: "2px", fontWeight: 500 }}>{m.label}</p>
                 </div>
               ))}
             </div>
             <button
               onClick={() => router.push("/onboarding")}
-              style={{
-                width: "100%",
-                background: "rgba(255,255,255,0.06)",
-                border: "1px solid rgba(255,255,255,0.1)",
-                borderRadius: "10px",
-                color: "var(--text-secondary)",
-                fontWeight: 500,
-                padding: "10px",
-                fontSize: "13px",
-                cursor: "pointer",
-                fontFamily: "Inter, sans-serif",
-              }}
+              className="btn-secondary"
+              style={{ width: "100%", fontSize: "13px", padding: "10px" }}
             >
               Edit goals
             </button>
@@ -153,21 +134,12 @@ export default function ProfilePage() {
           <button
             onClick={() => router.push("/onboarding")}
             style={{
-              width: "100%",
-              background: "rgba(232,119,58,0.1)",
-              border: "1px solid rgba(232,119,58,0.2)",
-              borderRadius: "14px",
-              color: "var(--accent)",
-              fontWeight: 600,
-              padding: "16px",
-              fontSize: "14px",
-              cursor: "pointer",
-              marginBottom: "20px",
-              fontFamily: "Inter, sans-serif",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              gap: "8px",
+              width: "100%", background: "white", border: "1.5px dashed #D4522A",
+              borderRadius: "14px", color: "#D4522A", fontWeight: 600,
+              padding: "16px", fontSize: "14px", cursor: "pointer",
+              marginBottom: "20px", fontFamily: "Inter, sans-serif",
+              display: "flex", alignItems: "center", justifyContent: "center", gap: "8px",
+              boxShadow: "0 1px 4px rgba(26,22,18,0.04)",
             }}
           >
             🎯 Set your daily macro goals →
@@ -175,15 +147,10 @@ export default function ProfilePage() {
         )}
 
         {/* MFP Integration */}
-        <p style={{ fontSize: "11px", fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--text-muted)", marginBottom: "10px" }}>
-          App Integrations
-        </p>
+        <p className="section-label" style={{ marginBottom: "10px" }}>App Integrations</p>
         <div style={{
-          background: "rgba(255,255,255,0.04)",
-          border: "1px solid rgba(255,255,255,0.08)",
-          borderRadius: "18px",
-          padding: "16px",
-          marginBottom: "20px",
+          background: "white", border: "1px solid #E8E3D8", borderRadius: "18px",
+          padding: "18px", marginBottom: "20px", boxShadow: "0 1px 4px rgba(26,22,18,0.05)",
         }}>
           <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "14px" }}>
             <div style={{
@@ -192,10 +159,10 @@ export default function ProfilePage() {
               color: "white", fontWeight: 700, fontSize: "18px", flexShrink: 0,
             }}>M</div>
             <div>
-              <p style={{ fontSize: "14px", fontWeight: 600, color: "var(--text-primary)" }}>
+              <p style={{ fontSize: "14px", fontWeight: 600, color: "#1A1612" }}>
                 {mfpConnected ? "Connected to MyFitnessPal" : "Connect MyFitnessPal"}
               </p>
-              <p style={{ fontSize: "12px", color: "var(--text-muted)", marginTop: "2px" }}>
+              <p style={{ fontSize: "12px", color: "#A89880", marginTop: "2px" }}>
                 {mfpConnected ? `@${mfpInput}` : "Sync your food diary"}
               </p>
             </div>
@@ -204,27 +171,24 @@ export default function ProfilePage() {
           {mfpConnected ? (
             <div>
               <div style={{
-                background: "rgba(92,184,122,0.1)", border: "1px solid rgba(92,184,122,0.2)",
+                background: "#EEF5F1", border: "1px solid rgba(74,124,89,0.2)",
                 borderRadius: "10px", padding: "10px 14px", marginBottom: "10px",
                 display: "flex", alignItems: "center", gap: "8px",
               }}>
-                <span style={{ color: "#5CB87A", fontSize: "14px" }}>✓</span>
-                <p style={{ fontSize: "12px", color: "#5CB87A", fontWeight: 500 }}>Syncing from @{mfpInput}</p>
+                <span style={{ color: "#4A7C59", fontSize: "14px" }}>✓</span>
+                <p style={{ fontSize: "12px", color: "#4A7C59", fontWeight: 500 }}>Syncing from @{mfpInput}</p>
               </div>
-              <p style={{ fontSize: "12px", color: "var(--text-muted)", marginBottom: "10px" }}>
+              <p style={{ fontSize: "12px", color: "#A89880", marginBottom: "10px" }}>
                 Make sure your{" "}
-                <a href="https://www.myfitnesspal.com/account/diary_settings" target="_blank" rel="noopener noreferrer" style={{ color: "var(--accent)" }}>
+                <a href="https://www.myfitnesspal.com/account/diary_settings" target="_blank" rel="noopener noreferrer" style={{ color: "#D4522A" }}>
                   Food Diary sharing
                 </a>{" "}
                 is set to Public.
               </p>
               <button
                 onClick={() => { setMfpConnected(false); setMfpInput(""); }}
-                style={{
-                  width: "100%", background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)",
-                  borderRadius: "10px", color: "var(--text-muted)", fontWeight: 500,
-                  padding: "10px", fontSize: "13px", cursor: "pointer", fontFamily: "Inter, sans-serif",
-                }}
+                className="btn-secondary"
+                style={{ width: "100%", fontSize: "13px", padding: "10px" }}
               >
                 Disconnect
               </button>
@@ -239,9 +203,9 @@ export default function ProfilePage() {
                 placeholder="Your MFP username"
                 style={{ marginBottom: "8px" }}
               />
-              <p style={{ fontSize: "12px", color: "var(--text-muted)", marginBottom: "10px" }}>
+              <p style={{ fontSize: "12px", color: "#A89880", marginBottom: "10px" }}>
                 Set your{" "}
-                <a href="https://www.myfitnesspal.com/account/diary_settings" target="_blank" rel="noopener noreferrer" style={{ color: "var(--accent)" }}>
+                <a href="https://www.myfitnesspal.com/account/diary_settings" target="_blank" rel="noopener noreferrer" style={{ color: "#D4522A" }}>
                   Food Diary sharing
                 </a>{" "}
                 to Public in MFP settings.

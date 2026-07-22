@@ -4,6 +4,7 @@ import { createClient } from "@/utils/supabase/client";
 
 const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 const MEALS = ["breakfast", "lunch", "dinner"] as const;
+const MEAL_LABELS: Record<string, string> = { breakfast: "Breakfast", lunch: "Lunch", dinner: "Dinner" };
 const MEAL_ICONS: Record<string, string> = { breakfast: "🌅", lunch: "☀️", dinner: "🌙" };
 
 function getWeekStart(date = new Date()) {
@@ -28,36 +29,16 @@ export default function PlannerPage() {
   const load = useCallback(async () => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
-
-    // Get or create meal plan for this week
-    let { data: plan } = await supabase
-      .from("meal_plans")
-      .select("*")
-      .eq("user_id", user.id)
-      .eq("week_start", weekStart)
-      .single();
-
+    let { data: plan } = await supabase.from("meal_plans").select("*").eq("user_id", user.id).eq("week_start", weekStart).single();
     if (!plan) {
-      const { data: newPlan } = await supabase
-        .from("meal_plans")
-        .insert({ user_id: user.id, week_start: weekStart })
-        .select()
-        .single();
+      const { data: newPlan } = await supabase.from("meal_plans").insert({ user_id: user.id, week_start: weekStart }).select().single();
       plan = newPlan;
     }
-
     setMealPlan(plan);
-
     const [{ data: planEntries }, { data: userRecipes }] = await Promise.all([
-      supabase.from("meal_plan_entries")
-        .select("*, recipes(id, title, total_calories, total_protein_g)")
-        .eq("meal_plan_id", plan.id),
-      supabase.from("recipes")
-        .select("id, title, total_calories, total_protein_g")
-        .eq("user_id", user.id)
-        .order("created_at", { ascending: false }),
+      supabase.from("meal_plan_entries").select("*, recipes(id, title, total_calories, total_protein_g)").eq("meal_plan_id", plan.id),
+      supabase.from("recipes").select("id, title, total_calories, total_protein_g").eq("user_id", user.id).order("created_at", { ascending: false }),
     ]);
-
     setEntries(planEntries || []);
     setRecipes(userRecipes || []);
     setLoading(false);
@@ -65,23 +46,15 @@ export default function PlannerPage() {
 
   useEffect(() => { load(); }, [load]);
 
-  const getEntry = (day: number, meal: string) =>
-    entries.find((e) => e.day_of_week === day && e.meal_type === meal);
+  const getEntry = (day: number, meal: string) => entries.find((e) => e.day_of_week === day && e.meal_type === meal);
 
   const assignRecipe = async (recipeId: string) => {
     if (!picker || !mealPlan) return;
     const existing = getEntry(picker.day, picker.meal);
-
     if (existing) {
       await supabase.from("meal_plan_entries").update({ recipe_id: recipeId }).eq("id", existing.id);
     } else {
-      await supabase.from("meal_plan_entries").insert({
-        meal_plan_id: mealPlan.id,
-        recipe_id: recipeId,
-        day_of_week: picker.day,
-        meal_type: picker.meal,
-        servings: 1,
-      });
+      await supabase.from("meal_plan_entries").insert({ meal_plan_id: mealPlan.id, recipe_id: recipeId, day_of_week: picker.day, meal_type: picker.meal, servings: 1 });
     }
     setPicker(null);
     load();
@@ -97,57 +70,96 @@ export default function PlannerPage() {
   const generateGrocery = async () => {
     if (!mealPlan) return;
     setGenerating(true);
-    await fetch("/api/grocery/generate", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ mealPlanId: mealPlan.id }),
-    });
+    await fetch("/api/grocery/generate", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ mealPlanId: mealPlan.id }) });
     setGenerating(false);
     window.location.href = "/grocery";
   };
 
-  if (loading) return <div className="flex items-center justify-center h-64 text-gray-400 text-sm">Loading...</div>;
+  if (loading) return (
+    <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "200px", color: "#A89880", fontSize: "14px" }}>
+      Loading...
+    </div>
+  );
 
   return (
-    <div className="px-4 pt-12 pb-6">
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-extrabold text-gray-900 tracking-tight">This Week</h1>
-        <button
-          onClick={generateGrocery}
-          disabled={generating || entries.length === 0}
-          className="text-xs bg-orange-500 text-white font-semibold px-3 py-2 rounded-xl disabled:opacity-40 active:scale-95 transition-transform"
-        >
-          {generating ? "..." : "🛒 Grocery list"}
-        </button>
+    <div style={{ minHeight: "100vh", background: "#FAF8F4", paddingBottom: "calc(80px + env(safe-area-inset-bottom, 0px))" }}>
+      {/* Header */}
+      <div style={{ background: "linear-gradient(180deg, #F5EDE0 0%, #FAF8F4 100%)", padding: "20px 20px 20px" }}>
+        <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between" }}>
+          <div>
+            <h1 className="serif" style={{ fontSize: "34px", fontWeight: 400, letterSpacing: "-0.02em", color: "#1A1612", lineHeight: 1.1 }}>
+              This Week
+            </h1>
+            <p style={{ color: "#A89880", fontSize: "13px", marginTop: "4px" }}>
+              {entries.length} meal{entries.length !== 1 ? "s" : ""} planned
+            </p>
+          </div>
+          <button
+            onClick={generateGrocery}
+            disabled={generating || entries.length === 0}
+            style={{
+              background: "#D4522A", color: "white", fontWeight: 600,
+              padding: "9px 14px", borderRadius: "10px", border: "none",
+              fontSize: "13px", cursor: entries.length === 0 ? "not-allowed" : "pointer",
+              opacity: entries.length === 0 ? 0.4 : 1,
+              display: "flex", alignItems: "center", gap: "6px",
+              fontFamily: "Inter, sans-serif",
+              boxShadow: "0 2px 8px rgba(212,82,42,0.2)",
+            }}
+          >
+            {generating ? "Generating..." : "🛒 Grocery list"}
+          </button>
+        </div>
       </div>
 
-      <div className="space-y-4">
+      <div style={{ padding: "12px 16px 0", maxWidth: "480px", margin: "0 auto", display: "flex", flexDirection: "column", gap: "10px" }}>
         {DAYS.map((day, dayIdx) => (
-          <div key={day} className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
-            <div className="px-4 py-2.5 bg-gray-50 border-b border-gray-100">
-              <p className="text-sm font-bold text-gray-700">{day}</p>
+          <div key={day} style={{
+            background: "white", border: "1px solid #E8E3D8", borderRadius: "18px",
+            overflow: "hidden", boxShadow: "0 1px 4px rgba(26,22,18,0.05)",
+          }}>
+            <div style={{ padding: "10px 16px", background: "#FAF8F4", borderBottom: "1px solid #F0EDE6" }}>
+              <p style={{ fontSize: "13px", fontWeight: 700, color: "#1A1612", letterSpacing: "-0.01em" }}>{day}</p>
             </div>
-            <div className="divide-y divide-gray-50">
-              {MEALS.map((meal) => {
+            <div>
+              {MEALS.map((meal, mealIdx) => {
                 const entry = getEntry(dayIdx, meal);
                 return (
-                  <div key={meal} className="px-4 py-2.5 flex items-center gap-3">
-                    <span className="text-base w-5 text-center">{MEAL_ICONS[meal]}</span>
-                    <div className="flex-1 min-w-0">
+                  <div key={meal} style={{
+                    padding: "12px 16px",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "12px",
+                    borderTop: mealIdx > 0 ? "1px solid #F0EDE6" : "none",
+                  }}>
+                    <span style={{ fontSize: "16px", width: "20px", textAlign: "center", flexShrink: 0 }}>{MEAL_ICONS[meal]}</span>
+                    <div style={{ flex: 1, minWidth: 0 }}>
                       {entry?.recipes ? (
-                        <div className="flex items-center justify-between">
-                          <div className="min-w-0">
-                            <p className="text-xs font-semibold text-gray-800 truncate">{entry.recipes.title}</p>
-                            <p className="text-xs text-gray-400">{entry.recipes.total_calories} cal · {entry.recipes.total_protein_g}g P</p>
+                        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                          <div style={{ minWidth: 0 }}>
+                            <p style={{ fontSize: "13px", fontWeight: 600, color: "#1A1612", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                              {entry.recipes.title}
+                            </p>
+                            <p style={{ fontSize: "11px", color: "#A89880", marginTop: "1px" }}>
+                              {entry.recipes.total_calories} cal · {entry.recipes.total_protein_g}g protein
+                            </p>
                           </div>
-                          <button onClick={() => removeEntry(dayIdx, meal)} className="text-gray-300 text-lg ml-2 flex-shrink-0">×</button>
+                          <button
+                            onClick={() => removeEntry(dayIdx, meal)}
+                            style={{ color: "#C4B8A8", fontSize: "18px", marginLeft: "8px", background: "none", border: "none", cursor: "pointer", flexShrink: 0, lineHeight: 1 }}
+                          >×</button>
                         </div>
                       ) : (
                         <button
                           onClick={() => setPicker({ day: dayIdx, meal })}
-                          className="text-xs text-gray-400 hover:text-orange-500 transition-colors"
+                          style={{
+                            fontSize: "12px", color: "#A89880", background: "none", border: "none",
+                            cursor: "pointer", fontFamily: "Inter, sans-serif", padding: 0,
+                            display: "flex", alignItems: "center", gap: "4px",
+                          }}
                         >
-                          + Add {meal}
+                          <span style={{ fontSize: "14px", color: "#C4B8A8" }}>+</span>
+                          Add {MEAL_LABELS[meal].toLowerCase()}
                         </button>
                       )}
                     </div>
@@ -161,25 +173,45 @@ export default function PlannerPage() {
 
       {/* Recipe Picker Modal */}
       {picker && (
-        <div className="fixed inset-0 z-50 flex items-end justify-center" onClick={() => setPicker(null)}>
-          <div className="absolute inset-0 bg-black/40" />
-          <div className="relative bg-white rounded-t-3xl w-full max-w-md p-5 pb-8 max-h-[70vh] flex flex-col" onClick={(e) => e.stopPropagation()}>
-            <div className="w-10 h-1 bg-gray-200 rounded-full mx-auto mb-4" />
-            <h3 className="text-base font-bold text-gray-900 mb-4">
-              {MEAL_ICONS[picker.meal]} {DAYS[picker.day]} {picker.meal}
+        <div
+          style={{ position: "fixed", inset: 0, zIndex: 50, display: "flex", alignItems: "flex-end", justifyContent: "center" }}
+          onClick={() => setPicker(null)}
+        >
+          <div style={{ position: "absolute", inset: 0, background: "rgba(26,22,18,0.4)" }} />
+          <div
+            style={{
+              position: "relative", background: "white", borderRadius: "24px 24px 0 0",
+              width: "100%", maxWidth: "480px", padding: "20px 20px 40px",
+              maxHeight: "70vh", display: "flex", flexDirection: "column",
+              boxShadow: "0 -8px 32px rgba(26,22,18,0.12)",
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div style={{ width: "36px", height: "4px", background: "#E8E3D8", borderRadius: "2px", margin: "0 auto 20px" }} />
+            <h3 style={{ fontSize: "17px", fontWeight: 700, color: "#1A1612", marginBottom: "16px" }}>
+              {MEAL_ICONS[picker.meal]} {DAYS[picker.day]} — {MEAL_LABELS[picker.meal]}
             </h3>
             {recipes.length === 0 ? (
-              <p className="text-sm text-gray-400 text-center py-8">No recipes yet. Import one first!</p>
+              <p style={{ fontSize: "14px", color: "#A89880", textAlign: "center", padding: "32px 0" }}>
+                No recipes yet. Import one first!
+              </p>
             ) : (
-              <div className="overflow-y-auto space-y-2">
+              <div style={{ overflowY: "auto", display: "flex", flexDirection: "column", gap: "8px" }}>
                 {recipes.map((r) => (
                   <button
                     key={r.id}
                     onClick={() => assignRecipe(r.id)}
-                    className="w-full text-left bg-gray-50 hover:bg-orange-50 border border-gray-100 rounded-xl px-4 py-3 transition-colors"
+                    style={{
+                      width: "100%", textAlign: "left", background: "#FAF8F4",
+                      border: "1px solid #E8E3D8", borderRadius: "14px",
+                      padding: "14px 16px", cursor: "pointer",
+                      fontFamily: "Inter, sans-serif", transition: "all 0.15s ease",
+                    }}
                   >
-                    <p className="text-sm font-semibold text-gray-900">{r.title}</p>
-                    <p className="text-xs text-gray-400 mt-0.5">{r.total_calories} cal · {r.total_protein_g}g protein</p>
+                    <p style={{ fontSize: "14px", fontWeight: 600, color: "#1A1612" }}>{r.title}</p>
+                    <p style={{ fontSize: "12px", color: "#A89880", marginTop: "3px" }}>
+                      {r.total_calories} cal · {r.total_protein_g}g protein
+                    </p>
                   </button>
                 ))}
               </div>
