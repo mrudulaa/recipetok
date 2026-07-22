@@ -6,11 +6,9 @@ import { useRouter } from "next/navigation";
 export default function ProfilePage() {
   const [user, setUser] = useState<any>(null);
   const [goals, setGoals] = useState<any>(null);
-  const [mfpUsername, setMfpUsername] = useState("");
   const [mfpInput, setMfpInput] = useState("");
   const [mfpConnected, setMfpConnected] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [mfpSaving, setMfpSaving] = useState(false);
   const [token, setToken] = useState<string | null>(null);
   const router = useRouter();
   const supabase = createClient();
@@ -21,16 +19,11 @@ export default function ProfilePage() {
       const { data: { user } } = await supabase.auth.getUser();
       setUser(user);
       setToken(session?.access_token || null);
-
       if (user) {
         const { data: g } = await supabase.from("user_goals").select("*").eq("user_id", user.id).single();
         if (g) {
           setGoals(g);
-          if (g.mfp_username) {
-            setMfpUsername(g.mfp_username);
-            setMfpInput(g.mfp_username);
-            setMfpConnected(true);
-          }
+          if (g.mfp_username) { setMfpInput(g.mfp_username); setMfpConnected(true); }
         }
       }
     };
@@ -38,30 +31,12 @@ export default function ProfilePage() {
   }, []);
 
   const saveMfp = async () => {
-    setMfpSaving(true);
+    setSaving(true);
     const headers: Record<string, string> = { "Content-Type": "application/json" };
     if (token) headers["Authorization"] = `Bearer ${token}`;
-    await fetch("/api/mfp", {
-      method: "POST",
-      headers,
-      body: JSON.stringify({ username: mfpInput.trim() }),
-    });
-    setMfpUsername(mfpInput.trim());
+    await fetch("/api/mfp", { method: "POST", headers, body: JSON.stringify({ username: mfpInput.trim() }) });
     setMfpConnected(!!mfpInput.trim());
-    setMfpSaving(false);
-  };
-
-  const disconnect = async () => {
-    setMfpInput("");
-    setMfpUsername("");
-    setMfpConnected(false);
-    const headers: Record<string, string> = { "Content-Type": "application/json" };
-    if (token) headers["Authorization"] = `Bearer ${token}`;
-    await fetch("/api/mfp", {
-      method: "POST",
-      headers,
-      body: JSON.stringify({ username: "" }),
-    });
+    setSaving(false);
   };
 
   const signOut = async () => {
@@ -69,112 +44,219 @@ export default function ProfilePage() {
     router.push("/login");
   };
 
+  const macroItems = goals ? [
+    { label: "Calories", value: goals.daily_calories, unit: "kcal", color: "#E8773A" },
+    { label: "Protein", value: goals.daily_protein, unit: "g", color: "#5CB87A" },
+    { label: "Carbs", value: goals.daily_carbs, unit: "g", color: "#E8B73A" },
+    { label: "Fat", value: goals.daily_fat, unit: "g", color: "#7A8EE8" },
+  ] : [];
+
   return (
-    <div className="px-5 pt-12 pb-8">
-      <h1 className="text-2xl font-extrabold text-gray-900 tracking-tight mb-6">Profile</h1>
+    <div style={{
+      minHeight: "100vh",
+      background: "var(--bg-primary)",
+      paddingBottom: "calc(80px + env(safe-area-inset-bottom, 0px))",
+      position: "relative",
+    }}>
+      <div style={{ position: "relative", zIndex: 1, maxWidth: "480px", margin: "0 auto", padding: "20px 16px 0" }}>
+        <h1 style={{ fontSize: "28px", fontWeight: 800, letterSpacing: "-0.03em", color: "var(--text-primary)", marginBottom: "24px" }}>
+          Profile
+        </h1>
 
-      {/* User info */}
-      {user && (
-        <div className="bg-white rounded-2xl border border-gray-100 px-4 py-3 mb-6 flex items-center gap-3">
-          <div className="w-10 h-10 rounded-full bg-orange-100 flex items-center justify-center text-orange-500 font-bold text-sm">
-            {user.email?.[0]?.toUpperCase()}
+        {/* User card */}
+        {user && (
+          <div style={{
+            background: "rgba(255,255,255,0.04)",
+            border: "1px solid rgba(255,255,255,0.08)",
+            borderRadius: "18px",
+            padding: "16px",
+            display: "flex",
+            alignItems: "center",
+            gap: "14px",
+            marginBottom: "20px",
+          }}>
+            <div style={{
+              width: "44px", height: "44px", borderRadius: "12px",
+              background: "linear-gradient(135deg, #E8773A, #F09060)",
+              display: "flex", alignItems: "center", justifyContent: "center",
+              color: "white", fontWeight: 700, fontSize: "18px", flexShrink: 0,
+            }}>
+              {user.email?.[0]?.toUpperCase()}
+            </div>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <p style={{ fontSize: "14px", fontWeight: 600, color: "var(--text-primary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                {user.email}
+              </p>
+              <p style={{ fontSize: "12px", color: "var(--text-muted)", marginTop: "2px" }}>RecipeTok account</p>
+            </div>
+            <button
+              onClick={signOut}
+              style={{
+                fontSize: "12px", color: "#E85A3A", fontWeight: 600,
+                background: "rgba(232,90,58,0.1)", border: "1px solid rgba(232,90,58,0.2)",
+                borderRadius: "8px", padding: "6px 12px", cursor: "pointer",
+                fontFamily: "Inter, sans-serif",
+              }}
+            >
+              Sign out
+            </button>
           </div>
-          <div className="flex-1 min-w-0">
-            <p className="text-sm font-semibold text-gray-900 truncate">{user.email}</p>
-          </div>
-          <button onClick={signOut} className="text-xs text-red-400 font-medium">Sign out</button>
-        </div>
-      )}
+        )}
 
-      {/* MFP Integration */}
-      <div className="mb-6">
-        <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">MyFitnessPal</h2>
-        <div className="bg-white rounded-2xl border border-gray-100 p-4">
-          <div className="flex items-center gap-3 mb-3">
-            <div className="w-10 h-10 rounded-xl bg-blue-500 flex items-center justify-center text-white text-lg font-bold flex-shrink-0">M</div>
+        {/* Daily Goals */}
+        <p style={{ fontSize: "11px", fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--text-muted)", marginBottom: "10px" }}>
+          Daily Goals
+        </p>
+        {goals ? (
+          <div style={{
+            background: "rgba(255,255,255,0.04)",
+            border: "1px solid rgba(255,255,255,0.08)",
+            borderRadius: "18px",
+            padding: "16px",
+            marginBottom: "20px",
+          }}>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px", marginBottom: "14px" }}>
+              {macroItems.map((m) => (
+                <div key={m.label} style={{
+                  background: `${m.color}12`,
+                  border: `1px solid ${m.color}25`,
+                  borderRadius: "12px",
+                  padding: "12px",
+                }}>
+                  <p style={{ fontSize: "22px", fontWeight: 700, color: m.color, letterSpacing: "-0.02em" }}>
+                    {m.value}
+                    <span style={{ fontSize: "12px", fontWeight: 400, color: "var(--text-muted)", marginLeft: "2px" }}>{m.unit}</span>
+                  </p>
+                  <p style={{ fontSize: "11px", color: "var(--text-muted)", marginTop: "2px" }}>{m.label}</p>
+                </div>
+              ))}
+            </div>
+            <button
+              onClick={() => router.push("/onboarding")}
+              style={{
+                width: "100%",
+                background: "rgba(255,255,255,0.06)",
+                border: "1px solid rgba(255,255,255,0.1)",
+                borderRadius: "10px",
+                color: "var(--text-secondary)",
+                fontWeight: 500,
+                padding: "10px",
+                fontSize: "13px",
+                cursor: "pointer",
+                fontFamily: "Inter, sans-serif",
+              }}
+            >
+              Edit goals
+            </button>
+          </div>
+        ) : (
+          <button
+            onClick={() => router.push("/onboarding")}
+            style={{
+              width: "100%",
+              background: "rgba(232,119,58,0.1)",
+              border: "1px solid rgba(232,119,58,0.2)",
+              borderRadius: "14px",
+              color: "var(--accent)",
+              fontWeight: 600,
+              padding: "16px",
+              fontSize: "14px",
+              cursor: "pointer",
+              marginBottom: "20px",
+              fontFamily: "Inter, sans-serif",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: "8px",
+            }}
+          >
+            🎯 Set your daily macro goals →
+          </button>
+        )}
+
+        {/* MFP Integration */}
+        <p style={{ fontSize: "11px", fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--text-muted)", marginBottom: "10px" }}>
+          App Integrations
+        </p>
+        <div style={{
+          background: "rgba(255,255,255,0.04)",
+          border: "1px solid rgba(255,255,255,0.08)",
+          borderRadius: "18px",
+          padding: "16px",
+          marginBottom: "20px",
+        }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "14px" }}>
+            <div style={{
+              width: "42px", height: "42px", borderRadius: "12px",
+              background: "#1565C0", display: "flex", alignItems: "center", justifyContent: "center",
+              color: "white", fontWeight: 700, fontSize: "18px", flexShrink: 0,
+            }}>M</div>
             <div>
-              <p className="text-sm font-semibold text-gray-900">
+              <p style={{ fontSize: "14px", fontWeight: 600, color: "var(--text-primary)" }}>
                 {mfpConnected ? "Connected to MyFitnessPal" : "Connect MyFitnessPal"}
               </p>
-              <p className="text-xs text-gray-400 mt-0.5">
-                {mfpConnected ? `@${mfpUsername}` : "Sync your food diary to track macros"}
+              <p style={{ fontSize: "12px", color: "var(--text-muted)", marginTop: "2px" }}>
+                {mfpConnected ? `@${mfpInput}` : "Sync your food diary"}
               </p>
             </div>
           </div>
 
-          {!mfpConnected ? (
-            <div className="space-y-2">
-              <input
-                type="text"
-                value={mfpInput}
-                onChange={(e) => setMfpInput(e.target.value)}
-                placeholder="Your MFP username"
-                className="w-full px-3 py-2.5 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400"
-              />
-              <p className="text-xs text-gray-400">
-                Make sure your{" "}
-                <a href="https://www.myfitnesspal.com/account/diary_settings" target="_blank" rel="noopener noreferrer" className="text-orange-500 underline">
-                  Food Diary sharing
-                </a>{" "}
-                is set to Public in MFP settings.
-              </p>
-              <button
-                onClick={saveMfp}
-                disabled={mfpSaving || !mfpInput.trim()}
-                className="w-full bg-blue-500 hover:bg-blue-600 text-white font-semibold py-2.5 rounded-xl text-sm transition-all disabled:opacity-50"
-              >
-                {mfpSaving ? "Connecting..." : "Connect"}
-              </button>
-            </div>
-          ) : (
-            <div className="space-y-2">
-              <div className="flex items-center gap-2 bg-green-50 rounded-xl px-3 py-2">
-                <span className="text-green-500 text-sm">✓</span>
-                <p className="text-xs text-green-700 font-medium">Diary syncing from @{mfpUsername}</p>
+          {mfpConnected ? (
+            <div>
+              <div style={{
+                background: "rgba(92,184,122,0.1)", border: "1px solid rgba(92,184,122,0.2)",
+                borderRadius: "10px", padding: "10px 14px", marginBottom: "10px",
+                display: "flex", alignItems: "center", gap: "8px",
+              }}>
+                <span style={{ color: "#5CB87A", fontSize: "14px" }}>✓</span>
+                <p style={{ fontSize: "12px", color: "#5CB87A", fontWeight: 500 }}>Syncing from @{mfpInput}</p>
               </div>
-              <p className="text-xs text-gray-400">
+              <p style={{ fontSize: "12px", color: "var(--text-muted)", marginBottom: "10px" }}>
                 Make sure your{" "}
-                <a href="https://www.myfitnesspal.com/account/diary_settings" target="_blank" rel="noopener noreferrer" className="text-orange-500 underline">
+                <a href="https://www.myfitnesspal.com/account/diary_settings" target="_blank" rel="noopener noreferrer" style={{ color: "var(--accent)" }}>
                   Food Diary sharing
                 </a>{" "}
                 is set to Public.
               </p>
               <button
-                onClick={disconnect}
-                className="w-full bg-gray-100 text-gray-500 font-semibold py-2.5 rounded-xl text-sm"
+                onClick={() => { setMfpConnected(false); setMfpInput(""); }}
+                style={{
+                  width: "100%", background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)",
+                  borderRadius: "10px", color: "var(--text-muted)", fontWeight: 500,
+                  padding: "10px", fontSize: "13px", cursor: "pointer", fontFamily: "Inter, sans-serif",
+                }}
               >
                 Disconnect
               </button>
             </div>
+          ) : (
+            <div>
+              <input
+                className="input-field"
+                type="text"
+                value={mfpInput}
+                onChange={(e) => setMfpInput(e.target.value)}
+                placeholder="Your MFP username"
+                style={{ marginBottom: "8px" }}
+              />
+              <p style={{ fontSize: "12px", color: "var(--text-muted)", marginBottom: "10px" }}>
+                Set your{" "}
+                <a href="https://www.myfitnesspal.com/account/diary_settings" target="_blank" rel="noopener noreferrer" style={{ color: "var(--accent)" }}>
+                  Food Diary sharing
+                </a>{" "}
+                to Public in MFP settings.
+              </p>
+              <button
+                onClick={saveMfp}
+                disabled={saving || !mfpInput.trim()}
+                className="btn-primary"
+                style={{ width: "100%" }}
+              >
+                {saving ? "Connecting..." : "Connect"}
+              </button>
+            </div>
           )}
         </div>
-      </div>
-
-      {/* Macro Goals */}
-      <div className="mb-6">
-        <div className="flex items-center justify-between mb-3">
-          <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Daily Goals</h2>
-          <button onClick={() => router.push("/onboarding")} className="text-xs text-orange-500 font-medium">Edit</button>
-        </div>
-        {goals ? (
-          <div className="grid grid-cols-2 gap-2">
-            {[
-              { label: "Calories", value: goals.daily_calories, unit: "kcal", color: "bg-orange-50 text-orange-600" },
-              { label: "Protein", value: goals.daily_protein, unit: "g", color: "bg-green-50 text-green-600" },
-              { label: "Carbs", value: goals.daily_carbs, unit: "g", color: "bg-blue-50 text-blue-600" },
-              { label: "Fat", value: goals.daily_fat, unit: "g", color: "bg-yellow-50 text-yellow-600" },
-            ].map((g) => (
-              <div key={g.label} className={`rounded-xl p-3 ${g.color}`}>
-                <p className="text-lg font-extrabold leading-none">{g.value}{g.unit}</p>
-                <p className="text-xs mt-0.5 opacity-80">{g.label}</p>
-              </div>
-            ))}
-          </div>
-        ) : (
-          <button onClick={() => router.push("/onboarding")} className="w-full bg-orange-50 text-orange-500 font-semibold py-3 rounded-xl text-sm">
-            Set your macro goals →
-          </button>
-        )}
       </div>
     </div>
   );
