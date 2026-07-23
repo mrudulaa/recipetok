@@ -443,7 +443,9 @@ export default function PlannerPage() {
           <div
             style={{
               position: "relative", background: "white", borderRadius: "24px 24px 0 0",
-              width: "100%", maxWidth: "480px", padding: "20px 20px 40px",
+              width: "100%", maxWidth: "480px",
+              padding: "20px 20px 0",
+              paddingBottom: "max(24px, env(safe-area-inset-bottom, 24px))",
               maxHeight: "80vh", display: "flex", flexDirection: "column",
             }}
             onClick={(e) => e.stopPropagation()}
@@ -455,7 +457,7 @@ export default function PlannerPage() {
             {recipes.length === 0 ? (
               <p style={{ fontSize: "14px", color: "#9B9B9B", textAlign: "center", padding: "32px 0" }}>No recipes yet. Import one first!</p>
             ) : (
-              <div style={{ overflowY: "auto", display: "flex", flexDirection: "column", gap: "8px" }}>
+              <div style={{ overflowY: "auto", display: "flex", flexDirection: "column", gap: "8px", paddingBottom: "8px" }}>
                 {recipes.map((r) => (
                   <button
                     key={r.id}
