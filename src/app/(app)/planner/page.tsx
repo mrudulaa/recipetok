@@ -102,20 +102,34 @@ export default function PlannerPage() {
               {entries.length} meal{entries.length !== 1 ? "s" : ""} planned
             </p>
           </div>
-          <button
-            onClick={generateGrocery}
-            disabled={generating || entries.length === 0}
-            style={{
-              background: "#1A1A1A", color: "white", fontWeight: 700,
-              padding: "11px 16px", borderRadius: "12px", border: "none",
-              fontSize: "14px", cursor: entries.length === 0 ? "not-allowed" : "pointer",
-              opacity: entries.length === 0 ? 0.35 : 1,
-              display: "flex", alignItems: "center", gap: "6px",
-              fontFamily: "Inter, sans-serif", marginTop: "4px",
-            }}
-          >
-            {generating ? "..." : "Grocery List"}
-          </button>
+          <div style={{ display: "flex", flexDirection: "column", gap: "6px", alignItems: "flex-end" }}>
+            <button
+              onClick={generateGrocery}
+              disabled={generating || entries.length === 0}
+              style={{
+                background: "#1A1A1A", color: "white", fontWeight: 700,
+                padding: "9px 14px", borderRadius: "10px", border: "none",
+                fontSize: "13px", cursor: entries.length === 0 ? "not-allowed" : "pointer",
+                opacity: entries.length === 0 ? 0.35 : 1,
+                display: "flex", alignItems: "center", gap: "6px",
+                fontFamily: "Inter, sans-serif",
+              }}
+            >
+              {generating ? "..." : "Grocery List"}
+            </button>
+            <a
+              href="/planner/ai"
+              style={{
+                background: "#EEF5F1", color: "#2E7D52", fontWeight: 700,
+                padding: "9px 14px", borderRadius: "10px", border: "none",
+                fontSize: "13px", cursor: "pointer",
+                display: "flex", alignItems: "center", gap: "5px",
+                fontFamily: "Inter, sans-serif", textDecoration: "none",
+              }}
+            >
+              <span>✦</span> AI Plan
+            </a>
+          </div>
         </div>
 
         {/* Day pill selector */}
