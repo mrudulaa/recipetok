@@ -89,7 +89,7 @@ export default function PlannerPage() {
   );
 
   return (
-    <div style={{ minHeight: "100vh", background: "#ffffff", paddingBottom: "calc(80px + env(safe-area-inset-bottom, 0px))" }}>
+    <div style={{ background: "#ffffff", paddingBottom: "calc(80px + env(safe-area-inset-bottom, 0px))" }}>
       <div style={{ maxWidth: "480px", margin: "0 auto" }}>
 
         {/* Header */}
