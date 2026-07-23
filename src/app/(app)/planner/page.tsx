@@ -168,13 +168,13 @@ export default function PlannerPage() {
         </div>
 
         {/* Day meals */}
-        <div style={{ padding: "20px 20px 0" }}>
+        <div style={{ padding: "12px 20px 0" }}>
           {MEALS.map((meal) => {
             const entry = getEntry(selectedDay, meal);
             return (
-              <div key={meal} style={{ marginBottom: "16px" }}>
+              <div key={meal} style={{ marginBottom: "10px" }}>
                 {/* Meal type header */}
-                <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "6px" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "4px" }}>
                   <span style={{ fontSize: "18px" }}>{MEAL_ICONS[meal]}</span>
                   <span style={{ fontSize: "16px", fontWeight: 700, color: "#1A1A1A", textTransform: "capitalize" }}>{meal}</span>
                 </div>
@@ -236,7 +236,7 @@ export default function PlannerPage() {
                     style={{
                       width: "100%", background: "white",
                       border: "1.5px dashed #E8E8E8", borderRadius: "14px",
-                      padding: "16px", cursor: "pointer", fontFamily: "Inter, sans-serif",
+                      padding: "11px 16px", cursor: "pointer", fontFamily: "Inter, sans-serif",
                       display: "flex", alignItems: "center", justifyContent: "center", gap: "6px",
                       color: "#9B9B9B", fontSize: "14px",
                     }}
