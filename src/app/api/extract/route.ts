@@ -56,8 +56,15 @@ export async function POST(req: NextRequest) {
       messages: [
         {
           role: "system",
-          content: `You are a nutrition expert and recipe parser. Extract a complete recipe from a TikTok video title/caption. 
+          content: `You are a nutrition expert and recipe parser. Extract a complete recipe from a TikTok video title/caption.
 ${goalContext}
+
+CRITICAL RULES FOR INGREDIENTS:
+- List EVERY individual ingredient as a SEPARATE item — never group them (e.g. "cauliflower rice" must be split into "cauliflower" + any other components used to make it)
+- If the recipe mentions a dish made of multiple components (e.g. "cauliflower fried rice"), break it into ALL its individual raw ingredients: cauliflower, eggs, carrots, peas, onion, soy sauce, garlic, ginger, etc.
+- Include ALL seasonings, sauces, oils, and garnishes as separate ingredients
+- Use realistic amounts based on typical serving sizes
+- Never use a prepared dish name as an ingredient — always use the raw components
 
 You MUST respond with ONLY a valid JSON object — no markdown, no code blocks, no explanation. Start your response with { and end with }.
 
