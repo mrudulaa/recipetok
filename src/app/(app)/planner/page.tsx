@@ -5,7 +5,7 @@ import { createClient } from "@/utils/supabase/client";
 const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 const MEALS = ["breakfast", "lunch", "dinner"] as const;
 const MEAL_LABELS: Record<string, string> = { breakfast: "breakfast", lunch: "lunch", dinner: "dinner" };
-const MEAL_ICONS: Record<string, string> = { breakfast: "🌅", lunch: "☀️", dinner: "🌙" };
+const MEAL_ICONS: Record<string, string> = { breakfast: "AM", lunch: "PM", dinner: "Eve" };
 
 function getWeekStart() {
   const d = new Date();
@@ -136,7 +136,7 @@ export default function PlannerPage() {
                     borderTop: mealIdx > 0 ? "1px solid #F2F2F2" : "none",
                   }}>
                     {/* Meal icon */}
-                    <span style={{ fontSize: "16px", width: "22px", textAlign: "center", flexShrink: 0, opacity: 0.5 }}>{MEAL_ICONS[meal]}</span>
+                    <span style={{ fontSize: "10px", fontWeight: 700, width: "28px", textAlign: "center", flexShrink: 0, color: "#BBBBBB", letterSpacing: "0.02em", fontFamily: "Inter, sans-serif" }}>{MEAL_ICONS[meal]}</span>
 
                     {entry?.recipes ? (
                       <>
