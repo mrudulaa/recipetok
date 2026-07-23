@@ -1,13 +1,13 @@
 "use client";
 import { useState } from "react";
 
-const BENEFIT_LABELS: Record<string, { label: string; color: string }> = {
-  higher_protein: { label: "↑ Protein", color: "bg-green-100 text-green-700" },
-  lower_carb: { label: "↓ Carbs", color: "bg-blue-100 text-blue-700" },
-  lower_calorie: { label: "↓ Calories", color: "bg-orange-100 text-orange-700" },
-  lower_fat: { label: "↓ Fat", color: "bg-yellow-100 text-yellow-700" },
-  dairy_free: { label: "Dairy-free", color: "bg-purple-100 text-purple-700" },
-  vegan: { label: "Vegan", color: "bg-emerald-100 text-emerald-700" },
+const BENEFIT_LABELS: Record<string, { label: string; color: string; bg: string }> = {
+  higher_protein: { label: "↑ Protein", color: "#2E7D52", bg: "#EEF5F1" },
+  lower_carb: { label: "↓ Carbs", color: "#8B6914", bg: "#FDF8EE" },
+  lower_calorie: { label: "↓ Calories", color: "#C0392B", bg: "#FDF2F1" },
+  lower_fat: { label: "↓ Fat", color: "#3D5A8A", bg: "#EEF1F8" },
+  dairy_free: { label: "Dairy-free", color: "#6B3FA0", bg: "#F3EEF8" },
+  vegan: { label: "Vegan", color: "#2E7D52", bg: "#EEF5F1" },
 };
 
 export default function SwapModal({ ingredient }: { ingredient: any }) {
@@ -15,44 +15,68 @@ export default function SwapModal({ ingredient }: { ingredient: any }) {
 
   return (
     <>
+      {/* Swap icon button — green ↔ arrows */}
       <button
         onClick={() => setOpen(true)}
-        className="text-xs bg-orange-50 text-orange-500 font-semibold px-2.5 py-1 rounded-lg border border-orange-100 active:scale-95 transition-transform"
+        style={{
+          width: "28px", height: "28px", borderRadius: "8px",
+          background: "#EEF5F1", border: "none", cursor: "pointer",
+          display: "flex", alignItems: "center", justifyContent: "center",
+          flexShrink: 0,
+        }}
       >
-        Swap
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#2E7D52" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+          <polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/>
+          <polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/>
+        </svg>
       </button>
 
       {open && (
-        <div className="fixed inset-0 z-50 flex items-end justify-center" onClick={() => setOpen(false)}>
-          <div className="absolute inset-0 bg-black/40" />
+        <div
+          style={{ position: "fixed", inset: 0, zIndex: 50, display: "flex", alignItems: "flex-end", justifyContent: "center" }}
+          onClick={() => setOpen(false)}
+        >
+          <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.4)" }} />
           <div
-            className="relative bg-white rounded-t-3xl w-full max-w-md p-5 pb-8 shadow-xl"
+            style={{
+              position: "relative", background: "white", borderRadius: "24px 24px 0 0",
+              width: "100%", maxWidth: "480px", padding: "20px 20px 40px",
+              maxHeight: "75vh", display: "flex", flexDirection: "column",
+            }}
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="w-10 h-1 bg-gray-200 rounded-full mx-auto mb-4" />
-            <h3 className="text-base font-bold text-gray-900 mb-1 capitalize">
+            <div style={{ width: "36px", height: "4px", background: "#E8E8E8", borderRadius: "2px", margin: "0 auto 20px" }} />
+            <h3 style={{ fontSize: "18px", fontWeight: 800, color: "#1A1A1A", marginBottom: "4px", letterSpacing: "-0.02em", textTransform: "capitalize" }}>
               Swap: {ingredient.name}
             </h3>
-            <p className="text-xs text-gray-400 mb-4">
-              Original: {ingredient.amount} {ingredient.unit} · {ingredient.calories_per_serving} cal · {ingredient.protein_g}g protein
+            <p style={{ fontSize: "13px", color: "#9B9B9B", marginBottom: "20px", fontFamily: "Inter, sans-serif" }}>
+              Original: {ingredient.amount}{ingredient.unit} · {ingredient.calories_per_serving} cal · {ingredient.protein_g}g P
             </p>
 
-            <div className="space-y-3">
+            <div style={{ overflowY: "auto", display: "flex", flexDirection: "column", gap: "10px" }}>
               {ingredient.ingredient_swaps.map((swap: any) => {
-                const benefit = BENEFIT_LABELS[swap.goal_benefit] || { label: swap.goal_benefit, color: "bg-gray-100 text-gray-600" };
+                const benefit = BENEFIT_LABELS[swap.goal_benefit] || { label: swap.goal_benefit, color: "#555555", bg: "#F5F5F5" };
                 return (
-                  <div key={swap.id} className="bg-gray-50 rounded-xl p-3.5 border border-gray-100">
-                    <div className="flex items-start justify-between gap-2">
-                      <p className="text-sm font-semibold text-gray-900 capitalize">{swap.swap_name}</p>
-                      <span className={`text-xs font-medium px-2 py-0.5 rounded-full flex-shrink-0 ${benefit.color}`}>
+                  <div key={swap.id} style={{
+                    background: "#FAFAFA", border: "1px solid #E8E8E8",
+                    borderRadius: "14px", padding: "14px 16px",
+                  }}>
+                    <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: "8px", marginBottom: "6px" }}>
+                      <p style={{ fontSize: "15px", fontWeight: 700, color: "#1A1A1A", textTransform: "capitalize" }}>{swap.swap_name}</p>
+                      <span style={{
+                        fontSize: "11px", fontWeight: 700, padding: "3px 8px",
+                        borderRadius: "6px", flexShrink: 0,
+                        background: benefit.bg, color: benefit.color,
+                        fontFamily: "Inter, sans-serif",
+                      }}>
                         {benefit.label}
                       </span>
                     </div>
-                    <p className="text-xs text-gray-400 mt-0.5">
-                      {swap.swap_amount} {swap.swap_unit} · {swap.calories_per_serving} cal · {swap.protein_g}g P · {swap.carbs_g}g C · {swap.fat_g}g F
+                    <p style={{ fontSize: "13px", color: "#9B9B9B", marginBottom: "6px", fontFamily: "Inter, sans-serif" }}>
+                      {swap.swap_amount}{swap.swap_unit} · {swap.calories_per_serving} cal · {swap.protein_g}g P · {swap.carbs_g}g C · {swap.fat_g}g F
                     </p>
                     {swap.reason && (
-                      <p className="text-xs text-gray-500 mt-1.5 leading-relaxed">{swap.reason}</p>
+                      <p style={{ fontSize: "13px", color: "#555555", lineHeight: 1.5, fontFamily: "Inter, sans-serif" }}>{swap.reason}</p>
                     )}
                   </div>
                 );
@@ -61,7 +85,12 @@ export default function SwapModal({ ingredient }: { ingredient: any }) {
 
             <button
               onClick={() => setOpen(false)}
-              className="mt-4 w-full py-3 bg-gray-100 text-gray-600 font-semibold rounded-xl text-sm"
+              style={{
+                marginTop: "16px", width: "100%", padding: "14px",
+                background: "white", border: "1.5px solid #E8E8E8",
+                borderRadius: "12px", color: "#1A1A1A", fontWeight: 600,
+                fontSize: "14px", cursor: "pointer", fontFamily: "Inter, sans-serif",
+              }}
             >
               Close
             </button>

@@ -20,89 +20,166 @@ export default async function RecipeDetailPage({ params }: { params: Promise<{ i
   const totalTime = (recipe.prep_time_minutes || 0) + (recipe.cook_time_minutes || 0);
 
   return (
-    <div className="pb-8">
-      {/* Hero */}
-      <div className="relative">
+    <div style={{ background: "#ffffff", minHeight: "100vh", paddingBottom: "100px" }}>
+
+      {/* Hero image — full bleed with rounded bottom corners */}
+      <div style={{ position: "relative", width: "100%", aspectRatio: "4/3", overflow: "hidden", borderRadius: "0 0 24px 24px" }}>
         {recipe.thumbnail_url ? (
-          <img src={recipe.thumbnail_url} alt={recipe.title} className="w-full h-52 object-cover" />
+          <img
+            src={recipe.thumbnail_url}
+            alt={recipe.title}
+            style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
+          />
         ) : (
-          <div className="w-full h-52 bg-orange-50 flex items-center justify-center text-6xl">🍽️</div>
+          <div style={{ width: "100%", height: "100%", background: "#F5F5F5", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "64px" }}>🍽️</div>
         )}
-        <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
-        <Link href="/recipes" className="absolute top-4 left-4 w-9 h-9 bg-white/90 rounded-full flex items-center justify-center text-gray-700 text-lg font-bold shadow">
-          ‹
+        {/* Back button */}
+        <Link href="/recipes" style={{
+          position: "absolute", top: "16px", left: "16px",
+          width: "40px", height: "40px", borderRadius: "50%",
+          background: "rgba(255,255,255,0.92)", backdropFilter: "blur(8px)",
+          display: "flex", alignItems: "center", justifyContent: "center",
+          textDecoration: "none", boxShadow: "0 2px 8px rgba(0,0,0,0.15)",
+        }}>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#1A1A1A" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <polyline points="15 18 9 12 15 6"/>
+          </svg>
         </Link>
-        <div className="absolute bottom-4 left-5 right-5">
-          <h1 className="text-white font-extrabold text-xl leading-tight">{recipe.title}</h1>
+        {/* Heart button */}
+        <button style={{
+          position: "absolute", top: "16px", right: "16px",
+          width: "40px", height: "40px", borderRadius: "50%",
+          background: "rgba(255,255,255,0.92)", backdropFilter: "blur(8px)",
+          display: "flex", alignItems: "center", justifyContent: "center",
+          border: "none", cursor: "pointer", boxShadow: "0 2px 8px rgba(0,0,0,0.15)",
+        }}>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#1A1A1A" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
+          </svg>
+        </button>
+      </div>
+
+      <div style={{ maxWidth: "480px", margin: "0 auto", padding: "0 20px" }}>
+
+        {/* Title + author */}
+        <div style={{ paddingTop: "20px", marginBottom: "16px" }}>
+          <h1 style={{ fontSize: "24px", fontWeight: 800, color: "#1A1A1A", letterSpacing: "-0.03em", lineHeight: 1.2, marginBottom: "6px" }}>
+            {recipe.title}
+          </h1>
           {recipe.tiktok_author_handle && (
-            <a href={recipe.tiktok_url} target="_blank" rel="noopener noreferrer"
-              className="text-white/70 text-xs mt-0.5 block">
-              @{recipe.tiktok_author_handle} ↗
+            <a
+              href={recipe.tiktok_url || "#"}
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{ fontSize: "14px", color: "#9B9B9B", textDecoration: "none", display: "flex", alignItems: "center", gap: "4px" }}
+            >
+              @{recipe.tiktok_author_handle} on TikTok
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#9B9B9B" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/>
+              </svg>
             </a>
           )}
         </div>
-      </div>
 
-      <div className="px-5 pt-5 space-y-6">
-        {/* Macro Summary */}
-        <div className="grid grid-cols-4 gap-2">
+        {/* Macro pills */}
+        <div style={{ display: "flex", gap: "8px", marginBottom: "24px", flexWrap: "wrap" }}>
           {[
-            { label: "Calories", value: recipe.total_calories, unit: "", color: "bg-orange-50 text-orange-600" },
-            { label: "Protein", value: recipe.total_protein_g, unit: "g", color: "bg-green-50 text-green-600" },
-            { label: "Carbs", value: recipe.total_carbs_g, unit: "g", color: "bg-blue-50 text-blue-600" },
-            { label: "Fat", value: recipe.total_fat_g, unit: "g", color: "bg-yellow-50 text-yellow-600" },
+            { label: "cal", value: Math.round(recipe.total_calories || 0), color: "#C0392B", bg: "#FDF2F1" },
+            { label: "g Protein", value: Math.round(recipe.total_protein_g || 0), color: "#2E7D52", bg: "#EEF5F1" },
+            { label: "g Carbs", value: Math.round(recipe.total_carbs_g || 0), color: "#8B6914", bg: "#FDF8EE" },
+            { label: "g Fat", value: Math.round(recipe.total_fat_g || 0), color: "#3D5A8A", bg: "#EEF1F8" },
           ].map((m) => (
-            <div key={m.label} className={`rounded-xl p-2.5 text-center ${m.color}`}>
-              <p className="text-lg font-extrabold leading-none">{Math.round(m.value || 0)}{m.unit}</p>
-              <p className="text-xs mt-0.5 opacity-80">{m.label}</p>
+            <div key={m.label} style={{
+              background: m.bg, borderRadius: "10px", padding: "8px 14px",
+              display: "flex", alignItems: "baseline", gap: "2px",
+            }}>
+              <span style={{ fontSize: "18px", fontWeight: 800, color: m.color, letterSpacing: "-0.03em", fontFamily: "Inter, sans-serif" }}>{m.value}</span>
+              <span style={{ fontSize: "12px", fontWeight: 600, color: m.color, fontFamily: "Inter, sans-serif" }}>{m.label}</span>
             </div>
           ))}
         </div>
 
-        {/* Meta */}
-        <div className="flex gap-4 text-sm text-gray-500">
-          {recipe.servings > 1 && <span>🍽 {recipe.servings} servings</span>}
-          {totalTime > 0 && <span>⏱ {totalTime} min</span>}
-        </div>
+        {/* Meta row */}
+        {(recipe.servings > 1 || totalTime > 0) && (
+          <div style={{ display: "flex", gap: "20px", marginBottom: "16px" }}>
+            {recipe.servings > 1 && (
+              <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#9B9B9B" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+                </svg>
+                <span style={{ fontSize: "14px", color: "#9B9B9B", fontFamily: "Inter, sans-serif" }}>{recipe.servings} servings</span>
+              </div>
+            )}
+            {totalTime > 0 && (
+              <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#9B9B9B" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+                </svg>
+                <span style={{ fontSize: "14px", color: "#9B9B9B", fontFamily: "Inter, sans-serif" }}>{totalTime} min</span>
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Description */}
         {recipe.description && (
-          <p className="text-gray-600 text-sm leading-relaxed">{recipe.description}</p>
+          <p style={{ fontSize: "14px", color: "#555555", lineHeight: 1.6, marginBottom: "24px" }}>{recipe.description}</p>
         )}
 
         {/* Ingredients */}
-        <div>
-          <h2 className="text-base font-bold text-gray-900 mb-3">Ingredients</h2>
-          <div className="space-y-2">
-            {recipe.ingredients?.sort((a: any, b: any) => a.sort_order - b.sort_order).map((ing: any) => (
-              <div key={ing.id} className="bg-white rounded-xl border border-gray-100 px-4 py-3">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-gray-900 capitalize">{ing.name}</p>
-                    <p className="text-xs text-gray-400 mt-0.5">
-                      {ing.amount} {ing.unit} · {ing.calories_per_serving} cal · {ing.protein_g}g P
+        {recipe.ingredients?.length > 0 && (
+          <div style={{ marginBottom: "28px" }}>
+            <h2 style={{ fontSize: "18px", fontWeight: 800, color: "#1A1A1A", letterSpacing: "-0.02em", marginBottom: "12px" }}>
+              Ingredients
+            </h2>
+            <div>
+              {recipe.ingredients
+                .sort((a: any, b: any) => a.sort_order - b.sort_order)
+                .map((ing: any, idx: number) => (
+                  <div key={ing.id} style={{
+                    display: "flex", alignItems: "center", gap: "12px",
+                    paddingTop: "12px", paddingBottom: "12px",
+                    borderBottom: idx < recipe.ingredients.length - 1 ? "1px solid #F2F2F2" : "none",
+                  }}>
+                    {/* Name */}
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <p style={{ fontSize: "15px", fontWeight: 500, color: "#1A1A1A", textTransform: "capitalize" }}>{ing.name}</p>
+                    </div>
+                    {/* Amount */}
+                    <p style={{ fontSize: "14px", color: "#9B9B9B", flexShrink: 0, fontFamily: "Inter, sans-serif" }}>
+                      {ing.amount}{ing.unit}
                     </p>
+                    {/* Swap icon */}
+                    {ing.ingredient_swaps?.length > 0 ? (
+                      <SwapModal ingredient={ing} />
+                    ) : (
+                      <div style={{ width: "24px" }} />
+                    )}
                   </div>
-                  {ing.ingredient_swaps?.length > 0 && (
-                    <SwapModal ingredient={ing} />
-                  )}
-                </div>
-              </div>
-            ))}
+                ))}
+            </div>
           </div>
-        </div>
+        )}
 
         {/* Instructions */}
         {recipe.instructions?.length > 0 && (
-          <div>
-            <h2 className="text-base font-bold text-gray-900 mb-3">Instructions</h2>
-            <div className="space-y-3">
+          <div style={{ marginBottom: "28px" }}>
+            <h2 style={{ fontSize: "18px", fontWeight: 800, color: "#1A1A1A", letterSpacing: "-0.02em", marginBottom: "16px" }}>
+              Instructions
+            </h2>
+            <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
               {recipe.instructions.map((step: string, i: number) => (
-                <div key={i} className="flex gap-3">
-                  <span className="w-6 h-6 rounded-full bg-orange-100 text-orange-500 text-xs font-bold flex items-center justify-center flex-shrink-0 mt-0.5">
+                <div key={i} style={{ display: "flex", gap: "14px", alignItems: "flex-start" }}>
+                  <span style={{
+                    width: "28px", height: "28px", borderRadius: "50%",
+                    background: "#1A1A1A", color: "white",
+                    fontSize: "13px", fontWeight: 800,
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                    flexShrink: 0, fontFamily: "Inter, sans-serif",
+                  }}>
                     {i + 1}
                   </span>
-                  <p className="text-sm text-gray-700 leading-relaxed">{step}</p>
+                  <p style={{ fontSize: "15px", color: "#333333", lineHeight: 1.6, paddingTop: "4px", fontFamily: "Inter, sans-serif" }}>{step}</p>
                 </div>
               ))}
             </div>
@@ -111,14 +188,38 @@ export default async function RecipeDetailPage({ params }: { params: Promise<{ i
 
         {/* Tags */}
         {recipe.tags?.length > 0 && (
-          <div className="flex flex-wrap gap-2">
+          <div style={{ display: "flex", flexWrap: "wrap", gap: "8px", marginBottom: "16px" }}>
             {recipe.tags.map((tag: string) => (
-              <span key={tag} className="text-xs bg-gray-100 text-gray-500 px-2.5 py-1 rounded-full capitalize">
+              <span key={tag} style={{
+                fontSize: "12px", background: "#F5F5F5", color: "#555555",
+                padding: "5px 12px", borderRadius: "100px", textTransform: "capitalize",
+                fontFamily: "Inter, sans-serif",
+              }}>
                 {tag}
               </span>
             ))}
           </div>
         )}
+      </div>
+
+      {/* Sticky Log This Meal button */}
+      <div style={{
+        position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 50,
+        padding: "12px 20px",
+        paddingBottom: "max(12px, env(safe-area-inset-bottom, 12px))",
+        background: "rgba(255,255,255,0.97)", backdropFilter: "blur(12px)",
+        borderTop: "1px solid #E8E8E8",
+      }}>
+        <div style={{ maxWidth: "480px", margin: "0 auto" }}>
+          <button style={{
+            width: "100%", background: "#1A1A1A", color: "white",
+            fontWeight: 800, fontSize: "16px", padding: "16px 24px",
+            borderRadius: "14px", border: "none", cursor: "pointer",
+            fontFamily: "Inter, sans-serif", letterSpacing: "-0.01em",
+          }}>
+            Log This Meal
+          </button>
+        </div>
       </div>
     </div>
   );
