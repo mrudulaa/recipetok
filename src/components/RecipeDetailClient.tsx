@@ -4,8 +4,9 @@ import Link from "next/link";
 import SwapModal from "./SwapModal";
 
 export default function RecipeDetailClient({ recipe }: { recipe: any }) {
-  const [servings, setServings] = useState(recipe.servings || 1);
-  const multiplier = servings / (recipe.servings || 1);
+  const totalServings = recipe.servings || 1;
+  const [servings, setServings] = useState(1); // default to 1 serving
+  const multiplier = servings / totalServings; // scale macros per serving count
   const totalTime = (recipe.prep_time_minutes || 0) + (recipe.cook_time_minutes || 0);
 
   const scale = (val: number | null) => {
@@ -87,25 +88,27 @@ export default function RecipeDetailClient({ recipe }: { recipe: any }) {
         }}>
           <div>
             <p style={{ fontSize: "14px", fontWeight: 700, color: "#1A1A1A" }}>Servings</p>
-            <p style={{ fontSize: "12px", color: "#9B9B9B", marginTop: "1px" }}>Macros scale automatically</p>
+            <p style={{ fontSize: "12px", color: "#9B9B9B", marginTop: "1px" }}>
+              {servings} of {totalServings} · macros scale automatically
+            </p>
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
             <button
-              onClick={() => setServings(Math.max(0.5, servings - 0.5))}
+              onClick={() => setServings(Math.max(1, servings - 1))}
               style={{
                 width: "32px", height: "32px", borderRadius: "50%",
-                background: servings <= 0.5 ? "#E8E8E8" : "#1A1A1A",
-                color: servings <= 0.5 ? "#BBBBBB" : "white",
-                border: "none", cursor: servings <= 0.5 ? "not-allowed" : "pointer",
+                background: servings <= 1 ? "#E8E8E8" : "#1A1A1A",
+                color: servings <= 1 ? "#BBBBBB" : "white",
+                border: "none", cursor: servings <= 1 ? "not-allowed" : "pointer",
                 fontSize: "20px", fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center",
                 fontFamily: "Inter, sans-serif",
               }}
             >−</button>
             <span style={{ fontSize: "18px", fontWeight: 800, color: "#1A1A1A", minWidth: "32px", textAlign: "center", fontFamily: "Inter, sans-serif" }}>
-              {servings % 1 === 0 ? servings : servings.toFixed(1)}
+              {servings}
             </span>
             <button
-              onClick={() => setServings(servings + 0.5)}
+              onClick={() => setServings(servings + 1)}
               style={{
                 width: "32px", height: "32px", borderRadius: "50%",
                 background: "#1A1A1A", color: "white",
