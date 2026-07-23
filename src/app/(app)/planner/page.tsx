@@ -27,6 +27,7 @@ export default function PlannerPage() {
   const [loading, setLoading] = useState(true);
   const [selectedDay, setSelectedDay] = useState(getTodayIndex());
   const [picker, setPicker] = useState<{ day: number; meal: string } | null>(null);
+  const [swapPicker, setSwapPicker] = useState<{ day: number; meal: string; currentCalories: number; currentProtein: number } | null>(null);
   const [generating, setGenerating] = useState(false);
   const weekStart = getWeekStart();
   const supabase = createClient();
@@ -186,14 +187,33 @@ export default function PlannerPage() {
                         {entry.recipes.total_calories} cal · {entry.recipes.total_protein_g}g P
                       </p>
                     </div>
-                    <button
-                      onClick={() => removeEntry(selectedDay, meal)}
-                      style={{
-                        color: "#BBBBBB", fontSize: "22px", background: "none", border: "none",
-                        cursor: "pointer", flexShrink: 0, lineHeight: 1, padding: "4px",
-                        fontFamily: "Inter, sans-serif",
-                      }}
-                    >×</button>
+                    <div style={{ display: "flex", flexDirection: "column", gap: "4px", flexShrink: 0 }}>
+                      {/* Swap button */}
+                      <button
+                        onClick={() => setSwapPicker({ day: selectedDay, meal, currentCalories: entry.recipes.total_calories || 0, currentProtein: entry.recipes.total_protein_g || 0 })}
+                        style={{
+                          width: "28px", height: "28px", borderRadius: "8px",
+                          background: "#EEF5F1", border: "none", cursor: "pointer",
+                          display: "flex", alignItems: "center", justifyContent: "center",
+                        }}
+                        title="Swap meal"
+                      >
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#2E7D52" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                          <polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/>
+                          <polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/>
+                        </svg>
+                      </button>
+                      {/* Remove button */}
+                      <button
+                        onClick={() => removeEntry(selectedDay, meal)}
+                        style={{
+                          color: "#BBBBBB", fontSize: "18px", background: "none", border: "none",
+                          cursor: "pointer", lineHeight: 1, padding: "4px",
+                          fontFamily: "Inter, sans-serif", width: "28px", height: "28px",
+                          display: "flex", alignItems: "center", justifyContent: "center",
+                        }}
+                      >×</button>
+                    </div>
                   </div>
                 ) : (
                   /* Empty meal slot */
@@ -216,6 +236,81 @@ export default function PlannerPage() {
           })}
         </div>
       </div>
+
+      {/* Swap Meal Modal */}
+      {swapPicker && (
+        <div
+          style={{ position: "fixed", inset: 0, zIndex: 50, display: "flex", alignItems: "flex-end", justifyContent: "center" }}
+          onClick={() => setSwapPicker(null)}
+        >
+          <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.4)" }} />
+          <div
+            style={{
+              position: "relative", background: "white", borderRadius: "24px 24px 0 0",
+              width: "100%", maxWidth: "480px", padding: "20px 20px 40px",
+              maxHeight: "70vh", display: "flex", flexDirection: "column",
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div style={{ width: "36px", height: "4px", background: "#E8E8E8", borderRadius: "2px", margin: "0 auto 20px" }} />
+            <h3 style={{ fontSize: "18px", fontWeight: 800, color: "#1A1A1A", marginBottom: "4px", letterSpacing: "-0.02em" }}>
+              Swap Meal
+            </h3>
+            <p style={{ fontSize: "13px", color: "#9B9B9B", marginBottom: "16px" }}>
+              Current: {swapPicker.currentCalories} cal · {swapPicker.currentProtein}g P — showing similar options
+            </p>
+            {recipes.length === 0 ? (
+              <p style={{ fontSize: "14px", color: "#9B9B9B", textAlign: "center", padding: "32px 0" }}>No other recipes in your library.</p>
+            ) : (
+              <div style={{ overflowY: "auto", display: "flex", flexDirection: "column", gap: "8px" }}>
+                {recipes
+                  .filter((r) => {
+                    const entry = getEntry(swapPicker.day, swapPicker.meal);
+                    return r.id !== entry?.recipes?.id; // exclude current recipe
+                  })
+                  .sort((a, b) => {
+                    // Sort by closest calorie match
+                    const diffA = Math.abs((a.total_calories || 0) - swapPicker.currentCalories);
+                    const diffB = Math.abs((b.total_calories || 0) - swapPicker.currentCalories);
+                    return diffA - diffB;
+                  })
+                  .map((r) => {
+                    const calDiff = (r.total_calories || 0) - swapPicker.currentCalories;
+                    const proteinDiff = (r.total_protein_g || 0) - swapPicker.currentProtein;
+                    return (
+                      <button
+                        key={r.id}
+                        onClick={() => { assignRecipe(r.id); setSwapPicker(null); }}
+                        style={{
+                          width: "100%", textAlign: "left", background: "white",
+                          border: "1px solid #E8E8E8", borderRadius: "14px",
+                          padding: "12px 14px", cursor: "pointer", fontFamily: "Inter, sans-serif",
+                          display: "flex", alignItems: "center", gap: "12px",
+                        }}
+                      >
+                        {r.thumbnail_url && (
+                          <img src={r.thumbnail_url} alt="" style={{ width: "44px", height: "44px", borderRadius: "8px", objectFit: "cover", flexShrink: 0 }} />
+                        )}
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <p style={{ fontSize: "14px", fontWeight: 600, color: "#1A1A1A", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{r.title}</p>
+                          <p style={{ fontSize: "12px", color: "#9B9B9B", marginTop: "2px" }}>{r.total_calories} cal · {r.total_protein_g}g P</p>
+                        </div>
+                        <div style={{ textAlign: "right", flexShrink: 0 }}>
+                          <p style={{ fontSize: "11px", color: calDiff > 0 ? "#C0392B" : "#2E7D52", fontWeight: 600 }}>
+                            {calDiff > 0 ? "+" : ""}{calDiff} cal
+                          </p>
+                          <p style={{ fontSize: "11px", color: proteinDiff > 0 ? "#2E7D52" : "#C0392B", fontWeight: 600 }}>
+                            {proteinDiff > 0 ? "+" : ""}{proteinDiff}g P
+                          </p>
+                        </div>
+                      </button>
+                    );
+                  })}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Recipe Picker Modal */}
       {picker && (

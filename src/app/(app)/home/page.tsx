@@ -5,10 +5,45 @@ export default async function HomePage() {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
 
-  const [{ data: recipes }, { data: goals }] = await Promise.all([
+  // Get today's day of week (0=Mon, 6=Sun)
+  const todayJs = new Date().getDay(); // 0=Sun, 1=Mon...
+  const todayIdx = todayJs === 0 ? 6 : todayJs - 1;
+
+  // Get week start (Monday)
+  const now = new Date();
+  const diff = now.getDate() - todayJs + (todayJs === 0 ? -6 : 1);
+  const weekStart = new Date(now);
+  weekStart.setDate(diff);
+  weekStart.setHours(0, 0, 0, 0);
+  const weekStartStr = weekStart.toISOString().split("T")[0];
+
+  const [{ data: recipes }, { data: goals }, { data: mealPlan }] = await Promise.all([
     supabase.from("recipes").select("id, title, tiktok_author_handle, thumbnail_url, total_calories, total_protein_g, total_carbs_g, total_fat_g").eq("user_id", user!.id).order("created_at", { ascending: false }).limit(10),
     supabase.from("user_goals").select("*").eq("user_id", user!.id).single(),
+    supabase.from("meal_plans").select("id").eq("user_id", user!.id).eq("week_start", weekStartStr).single(),
   ]);
+
+  // Calculate consumed macros from today's planner entries
+  let consumed = { calories: 0, protein: 0, carbs: 0, fat: 0 };
+  if (mealPlan?.id) {
+    const { data: todayEntries } = await supabase
+      .from("meal_plan_entries")
+      .select("servings, recipes(total_calories, total_protein_g, total_carbs_g, total_fat_g)")
+      .eq("meal_plan_id", mealPlan.id)
+      .eq("day_of_week", todayIdx);
+    if (todayEntries) {
+      for (const e of todayEntries) {
+        const r = (e as any).recipes;
+        const s = Number(e.servings) || 1;
+        if (r) {
+          consumed.calories += Math.round((r.total_calories || 0) * s);
+          consumed.protein += Math.round((r.total_protein_g || 0) * s);
+          consumed.carbs += Math.round((r.total_carbs_g || 0) * s);
+          consumed.fat += Math.round((r.total_fat_g || 0) * s);
+        }
+      }
+    }
+  }
 
   const firstName = user?.user_metadata?.full_name?.split(" ")[0] || user?.email?.split("@")[0] || "there";
   const hour = new Date().getHours();
@@ -53,21 +88,25 @@ export default async function HomePage() {
         {goals && (
           <div style={{ padding: "16px 20px 0", display: "flex", gap: "8px" }}>
             {[
-              { label: "calories", value: 0, goal: goals.daily_calories, color: "#2E7D52", barColor: "#2E7D52" },
-              { label: "protein", value: 0, goal: goals.daily_protein, unit: "g", color: "#3D5A8A", barColor: "#3D5A8A" },
-              { label: "carbs", value: 0, goal: goals.daily_carbs, unit: "g", color: "#8B6914", barColor: "#8B6914" },
-              { label: "fat", value: 0, goal: goals.daily_fat, unit: "g", color: "#C0392B", barColor: "#F59E0B" },
-            ].map((m) => (
-              <div key={m.label} style={{ flex: 1, background: "#F5F5F5", borderRadius: "14px", padding: "12px 10px" }}>
-                <p style={{ fontSize: "20px", fontWeight: 800, color: "#1A1A1A", letterSpacing: "-0.03em", lineHeight: 1 }}>
-                  {m.value}{m.unit || ""}
-                </p>
-                <p style={{ fontSize: "10px", color: "#9B9B9B", marginTop: "3px", fontWeight: 500 }}>{m.label}</p>
-                <div style={{ marginTop: "8px", height: "3px", background: "#E8E8E8", borderRadius: "2px" }}>
-                  <div style={{ width: "0%", height: "100%", background: m.barColor, borderRadius: "2px" }} />
+              { label: "cal", value: consumed.calories, goal: goals.daily_calories, barColor: "#C0392B" },
+              { label: "protein", value: consumed.protein, goal: goals.daily_protein, unit: "g", barColor: "#2E7D52" },
+              { label: "carbs", value: consumed.carbs, goal: goals.daily_carbs, unit: "g", barColor: "#8B6914" },
+              { label: "fat", value: consumed.fat, goal: goals.daily_fat, unit: "g", barColor: "#3D5A8A" },
+            ].map((m) => {
+              const pct = m.goal > 0 ? Math.min(100, Math.round((m.value / m.goal) * 100)) : 0;
+              return (
+                <div key={m.label} style={{ flex: 1, background: "#F5F5F5", borderRadius: "14px", padding: "12px 10px" }}>
+                  <p style={{ fontSize: "18px", fontWeight: 800, color: "#1A1A1A", letterSpacing: "-0.03em", lineHeight: 1 }}>
+                    {m.value}{m.unit || ""}
+                  </p>
+                  <p style={{ fontSize: "10px", color: "#9B9B9B", marginTop: "3px", fontWeight: 500 }}>{m.label}</p>
+                  <p style={{ fontSize: "9px", color: "#BBBBBB", marginTop: "1px" }}>/{m.goal}{m.unit || ""}</p>
+                  <div style={{ marginTop: "6px", height: "3px", background: "#E8E8E8", borderRadius: "2px" }}>
+                    <div style={{ width: `${pct}%`, height: "100%", background: m.barColor, borderRadius: "2px", transition: "width 0.3s" }} />
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
 
