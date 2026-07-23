@@ -12,13 +12,15 @@ async function fetchTikTokMeta(url: string) {
 
 export async function POST(req: NextRequest) {
   try {
-    // Use Manus built-in LLM forge (works in sandbox without external API key)
+    // Use direct OpenAI API key on Vercel; fall back to Manus forge in sandbox
     const forgeUrl = process.env.BUILT_IN_FORGE_API_URL;
     const forgeKey = process.env.BUILT_IN_FORGE_API_KEY;
-    const openai = new OpenAI({
-      apiKey: forgeKey || process.env.RECIPETOK_OPENAI_KEY,
-      baseURL: forgeUrl ? `${forgeUrl}/v1` : undefined,
-    });
+    const openaiKey = process.env.RECIPETOK_OPENAI_KEY;
+    const openai = new OpenAI(
+      openaiKey
+        ? { apiKey: openaiKey } // Direct OpenAI - use on Vercel
+        : { apiKey: forgeKey, baseURL: forgeUrl ? `${forgeUrl}/v1` : undefined } // Manus forge - sandbox only
+    );
 
     const supabase = await createClient();
 
@@ -59,9 +61,10 @@ export async function POST(req: NextRequest) {
       : "The user is focused on high protein eating.";
 
     // Use GPT-4o to extract the recipe from the video title/caption
+    const model = openaiKey ? "gpt-4o-mini" : "gpt-5-mini";
     const completion = await openai.chat.completions.create({
-      model: "gpt-5-mini",
-      max_completion_tokens: 4000,
+      model,
+      max_tokens: 4000,
       messages: [
         {
           role: "system",
