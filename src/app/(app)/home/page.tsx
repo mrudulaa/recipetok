@@ -81,7 +81,7 @@ export default async function HomePage() {
           <p style={{ fontSize: "26px", fontWeight: 800, color: "#1A1A1A", letterSpacing: "-0.03em", lineHeight: 1.1 }}>
             {greeting}, {firstName}
           </p>
-          <p style={{ fontSize: "14px", color: "#9B9B9B", marginTop: "4px" }}>{dayLabel} · your nutrition summary</p>
+          <p style={{ fontSize: "14px", color: "#9B9B9B", marginTop: "4px" }}>{dayLabel} · Day {todayIdx + 1} of your plan</p>
         </div>
 
         {/* Macro stats */}
@@ -143,7 +143,8 @@ export default async function HomePage() {
                     </>
                   ) : (
                     <Link href="/planner" style={{ flex: 1, textDecoration: "none" }}>
-                      <p style={{ fontSize: "14px", color: "#BBBBBB" }}>+ Add {MEAL_LABELS[idx].toLowerCase()}</p>
+                      <p style={{ fontSize: "14px", color: "#BBBBBB", fontStyle: "italic" }}>Not planned yet</p>
+                      <p style={{ fontSize: "11px", color: "#DDDDDD", marginTop: "2px" }}>Tap to plan your {MEAL_LABELS[idx].toLowerCase()}</p>
                     </Link>
                   )}
                 </div>

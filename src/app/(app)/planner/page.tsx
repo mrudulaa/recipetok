@@ -17,7 +17,7 @@ function getWeekStart() {
 
 function getTodayIndex() {
   const day = new Date().getDay();
-  return day === 0 ? 6 : day - 1; // Mon=0 ... Sun=6
+  return day === 0 ? 6 : day - 1;
 }
 
 export default function PlannerPage() {
@@ -29,6 +29,8 @@ export default function PlannerPage() {
   const [picker, setPicker] = useState<{ day: number; meal: string } | null>(null);
   const [swapPicker, setSwapPicker] = useState<{ day: number; meal: string; currentCalories: number; currentProtein: number } | null>(null);
   const [generating, setGenerating] = useState(false);
+  const [aiSwapping, setAiSwapping] = useState(false);
+  const [aiSwapResult, setAiSwapResult] = useState<any>(null);
   const weekStart = getWeekStart();
   const supabase = createClient();
 
@@ -66,6 +68,19 @@ export default function PlannerPage() {
     load();
   };
 
+  const assignSwap = async (recipeId: string) => {
+    if (!swapPicker || !mealPlan) return;
+    const existing = getEntry(swapPicker.day, swapPicker.meal);
+    if (existing) {
+      await supabase.from("meal_plan_entries").update({ recipe_id: recipeId }).eq("id", existing.id);
+    } else {
+      await supabase.from("meal_plan_entries").insert({ meal_plan_id: mealPlan.id, recipe_id: recipeId, day_of_week: swapPicker.day, meal_type: swapPicker.meal, servings: 1 });
+    }
+    setSwapPicker(null);
+    setAiSwapResult(null);
+    load();
+  };
+
   const removeEntry = async (day: number, meal: string) => {
     const entry = getEntry(day, meal);
     if (!entry) return;
@@ -82,6 +97,34 @@ export default function PlannerPage() {
     await fetch("/api/grocery/generate", { method: "POST", headers, body: JSON.stringify({ mealPlanId: mealPlan.id }) });
     setGenerating(false);
     window.location.href = "/grocery";
+  };
+
+  const generateAiSwap = async () => {
+    if (!swapPicker) return;
+    setAiSwapping(true);
+    setAiSwapResult(null);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const res = await fetch("/api/ai-swap", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {}),
+        },
+        body: JSON.stringify({
+          targetCalories: swapPicker.currentCalories,
+          targetProtein: swapPicker.currentProtein,
+          mealType: swapPicker.meal,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed");
+      setAiSwapResult(data.recipe);
+    } catch (err: any) {
+      alert(err.message || "Failed to generate AI swap");
+    } finally {
+      setAiSwapping(false);
+    }
   };
 
   if (loading) return (
@@ -173,11 +216,10 @@ export default function PlannerPage() {
             const entry = getEntry(selectedDay, meal);
             return (
               <div key={meal} style={{ marginBottom: "10px" }}>
-                {/* Meal type header */}
-                <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "4px" }}>
-                  <span style={{ fontSize: "18px" }}>{MEAL_ICONS[meal]}</span>
-                  <span style={{ fontSize: "16px", fontWeight: 700, color: "#1A1A1A", textTransform: "capitalize" }}>{meal}</span>
-                </div>
+                {/* Meal type label — small caps above card */}
+                <p style={{ fontSize: "11px", fontWeight: 600, color: "#9B9B9B", letterSpacing: "0.06em", textTransform: "uppercase", marginBottom: "4px", paddingLeft: "2px" }}>
+                  {MEAL_ICONS[meal]} {meal}
+                </p>
 
                 {entry?.recipes ? (
                   /* Filled meal card */
@@ -202,9 +244,8 @@ export default function PlannerPage() {
                       </p>
                     </div>
                     <div style={{ display: "flex", flexDirection: "column", gap: "4px", flexShrink: 0 }}>
-                      {/* Swap button */}
                       <button
-                        onClick={() => setSwapPicker({ day: selectedDay, meal, currentCalories: entry.recipes.total_calories || 0, currentProtein: entry.recipes.total_protein_g || 0 })}
+                        onClick={() => { setAiSwapResult(null); setSwapPicker({ day: selectedDay, meal, currentCalories: entry.recipes.total_calories || 0, currentProtein: entry.recipes.total_protein_g || 0 }); }}
                         style={{
                           width: "28px", height: "28px", borderRadius: "8px",
                           background: "#EEF5F1", border: "none", cursor: "pointer",
@@ -217,7 +258,6 @@ export default function PlannerPage() {
                           <polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/>
                         </svg>
                       </button>
-                      {/* Remove button */}
                       <button
                         onClick={() => removeEntry(selectedDay, meal)}
                         style={{
@@ -230,7 +270,6 @@ export default function PlannerPage() {
                     </div>
                   </div>
                 ) : (
-                  /* Empty meal slot */
                   <button
                     onClick={() => setPicker({ day: selectedDay, meal })}
                     style={{
@@ -255,72 +294,140 @@ export default function PlannerPage() {
       {swapPicker && (
         <div
           style={{ position: "fixed", inset: 0, zIndex: 50, display: "flex", alignItems: "flex-end", justifyContent: "center" }}
-          onClick={() => setSwapPicker(null)}
+          onClick={() => { setSwapPicker(null); setAiSwapResult(null); }}
         >
           <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.4)" }} />
           <div
             style={{
               position: "relative", background: "white", borderRadius: "24px 24px 0 0",
-              width: "100%", maxWidth: "480px", padding: "20px 20px 40px",
+              width: "100%", maxWidth: "480px", padding: "20px 20px 0",
               maxHeight: "80vh", display: "flex", flexDirection: "column",
             }}
             onClick={(e) => e.stopPropagation()}
           >
-            <div style={{ width: "36px", height: "4px", background: "#E8E8E8", borderRadius: "2px", margin: "0 auto 20px" }} />
+            <div style={{ width: "36px", height: "4px", background: "#E8E8E8", borderRadius: "2px", margin: "0 auto 16px" }} />
             <h3 style={{ fontSize: "18px", fontWeight: 800, color: "#1A1A1A", marginBottom: "4px", letterSpacing: "-0.02em" }}>
               Swap Meal
             </h3>
-            <p style={{ fontSize: "13px", color: "#9B9B9B", marginBottom: "16px" }}>
+            <p style={{ fontSize: "13px", color: "#9B9B9B", marginBottom: "14px" }}>
               Current: {swapPicker.currentCalories} cal · {swapPicker.currentProtein}g P — showing similar options
             </p>
-            {recipes.length === 0 ? (
-              <p style={{ fontSize: "14px", color: "#9B9B9B", textAlign: "center", padding: "32px 0" }}>No other recipes in your library.</p>
-            ) : (
-              <div style={{ overflowY: "auto", display: "flex", flexDirection: "column", gap: "8px" }}>
-                {recipes
-                  .filter((r) => {
-                    const entry = getEntry(swapPicker.day, swapPicker.meal);
-                    return r.id !== entry?.recipes?.id; // exclude current recipe
-                  })
-                  .sort((a, b) => {
-                    // Sort by closest calorie match
-                    const diffA = Math.abs((a.total_calories || 0) - swapPicker.currentCalories);
-                    const diffB = Math.abs((b.total_calories || 0) - swapPicker.currentCalories);
-                    return diffA - diffB;
-                  })
-                  .map((r) => {
-                    const calDiff = (r.total_calories || 0) - swapPicker.currentCalories;
-                    const proteinDiff = (r.total_protein_g || 0) - swapPicker.currentProtein;
-                    return (
-                      <button
-                        key={r.id}
-                        onClick={() => { assignRecipe(r.id); setSwapPicker(null); }}
-                        style={{
-                          width: "100%", textAlign: "left", background: "white",
-                          border: "1px solid #E8E8E8", borderRadius: "14px",
-                          padding: "12px 14px", cursor: "pointer", fontFamily: "Inter, sans-serif",
-                          display: "flex", alignItems: "center", gap: "12px",
-                        }}
-                      >
-                        {r.thumbnail_url && (
-                          <img src={r.thumbnail_url} alt="" style={{ width: "44px", height: "44px", borderRadius: "8px", objectFit: "cover", flexShrink: 0 }} />
-                        )}
-                        <div style={{ flex: 1, minWidth: 0 }}>
-                          <p style={{ fontSize: "14px", fontWeight: 600, color: "#1A1A1A", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{r.title}</p>
-                          <p style={{ fontSize: "12px", color: "#9B9B9B", marginTop: "2px" }}>{r.total_calories} cal · {r.total_protein_g}g P</p>
-                        </div>
-                        <div style={{ textAlign: "right", flexShrink: 0 }}>
-                          <p style={{ fontSize: "11px", color: calDiff > 0 ? "#C0392B" : "#2E7D52", fontWeight: 600 }}>
-                            {calDiff > 0 ? "+" : ""}{calDiff} cal
-                          </p>
-                          <p style={{ fontSize: "11px", color: proteinDiff > 0 ? "#2E7D52" : "#C0392B", fontWeight: 600 }}>
-                            {proteinDiff > 0 ? "+" : ""}{proteinDiff}g P
-                          </p>
-                        </div>
-                      </button>
-                    );
-                  })}
+
+            {/* AI swap result */}
+            {aiSwapResult ? (
+              <div style={{ paddingBottom: "32px" }}>
+                <div style={{
+                  border: "1px solid #C8E6D8", borderRadius: "14px",
+                  padding: "14px", marginBottom: "12px", background: "#F0F7F4",
+                  display: "flex", alignItems: "center", gap: "12px",
+                }}>
+                  {aiSwapResult.thumbnail_url && (
+                    <img src={aiSwapResult.thumbnail_url} alt="" style={{ width: "56px", height: "56px", borderRadius: "10px", objectFit: "cover", flexShrink: 0 }} />
+                  )}
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <p style={{ fontSize: "14px", fontWeight: 600, color: "#1A1A1A", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{aiSwapResult.title}</p>
+                    <p style={{ fontSize: "12px", color: "#9B9B9B", marginTop: "2px" }}>{aiSwapResult.total_calories} cal · {aiSwapResult.total_protein_g}g P</p>
+                    <span style={{ display: "inline-flex", alignItems: "center", gap: "4px", marginTop: "4px", background: "#EEF5F1", color: "#2E7D52", fontSize: "11px", fontWeight: 600, padding: "2px 8px", borderRadius: "100px" }}>
+                      ✦ AI Generated
+                    </span>
+                  </div>
+                </div>
+                <button
+                  onClick={() => assignSwap(aiSwapResult.id)}
+                  style={{
+                    width: "100%", background: "#1A1A1A", color: "white",
+                    fontWeight: 700, fontSize: "15px", padding: "14px",
+                    borderRadius: "14px", border: "none", cursor: "pointer",
+                    fontFamily: "Inter, sans-serif", marginBottom: "8px",
+                  }}
+                >
+                  Use this swap
+                </button>
+                <button
+                  onClick={generateAiSwap}
+                  disabled={aiSwapping}
+                  style={{
+                    width: "100%", background: "white", color: "#1A1A1A",
+                    fontWeight: 600, fontSize: "15px", padding: "14px",
+                    borderRadius: "14px", border: "none", cursor: "pointer",
+                    fontFamily: "Inter, sans-serif",
+                  }}
+                >
+                  {aiSwapping ? "Generating..." : "Try another"}
+                </button>
               </div>
+            ) : aiSwapping ? (
+              <div style={{ paddingBottom: "32px", textAlign: "center", padding: "32px 0 48px" }}>
+                <div style={{ fontSize: "28px", marginBottom: "12px" }}>✦</div>
+                <p style={{ fontSize: "15px", fontWeight: 600, color: "#1A1A1A", marginBottom: "4px" }}>Generating a swap for you...</p>
+                <p style={{ fontSize: "13px", color: "#9B9B9B" }}>AI is crafting the perfect option.</p>
+              </div>
+            ) : (
+              <>
+                {recipes.length === 0 ? (
+                  <p style={{ fontSize: "14px", color: "#9B9B9B", textAlign: "center", padding: "32px 0" }}>No other recipes in your library.</p>
+                ) : (
+                  <div style={{ overflowY: "auto", display: "flex", flexDirection: "column", gap: "8px" }}>
+                    {recipes
+                      .filter((r) => {
+                        const entry = getEntry(swapPicker.day, swapPicker.meal);
+                        return r.id !== entry?.recipes?.id;
+                      })
+                      .sort((a, b) => {
+                        const diffA = Math.abs((a.total_calories || 0) - swapPicker.currentCalories);
+                        const diffB = Math.abs((b.total_calories || 0) - swapPicker.currentCalories);
+                        return diffA - diffB;
+                      })
+                      .map((r) => {
+                        const calDiff = (r.total_calories || 0) - swapPicker.currentCalories;
+                        const proteinDiff = (r.total_protein_g || 0) - swapPicker.currentProtein;
+                        return (
+                          <button
+                            key={r.id}
+                            onClick={() => assignSwap(r.id)}
+                            style={{
+                              width: "100%", textAlign: "left", background: "white",
+                              border: "1px solid #E8E8E8", borderRadius: "14px",
+                              padding: "12px 14px", cursor: "pointer", fontFamily: "Inter, sans-serif",
+                              display: "flex", alignItems: "center", gap: "12px",
+                            }}
+                          >
+                            {r.thumbnail_url && (
+                              <img src={r.thumbnail_url} alt="" style={{ width: "44px", height: "44px", borderRadius: "8px", objectFit: "cover", flexShrink: 0 }} />
+                            )}
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                              <p style={{ fontSize: "14px", fontWeight: 600, color: "#1A1A1A", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{r.title}</p>
+                              <p style={{ fontSize: "12px", color: "#9B9B9B", marginTop: "2px" }}>{r.total_calories} cal · {r.total_protein_g}g P</p>
+                            </div>
+                            <div style={{ textAlign: "right", flexShrink: 0 }}>
+                              <p style={{ fontSize: "11px", color: calDiff > 0 ? "#C0392B" : "#2E7D52", fontWeight: 600 }}>
+                                {calDiff > 0 ? "+" : ""}{calDiff} cal
+                              </p>
+                              <p style={{ fontSize: "11px", color: proteinDiff > 0 ? "#2E7D52" : "#C0392B", fontWeight: 600 }}>
+                                {proteinDiff > 0 ? "+" : ""}{proteinDiff}g P
+                              </p>
+                            </div>
+                          </button>
+                        );
+                      })}
+                  </div>
+                )}
+                {/* Ask AI to generate a swap — pinned at bottom */}
+                <div style={{ paddingTop: "12px", paddingBottom: "32px", flexShrink: 0 }}>
+                  <button
+                    onClick={generateAiSwap}
+                    style={{
+                      width: "100%", background: "white", color: "#1A1A1A",
+                      fontWeight: 700, fontSize: "14px", padding: "14px",
+                      borderRadius: "14px", border: "1.5px solid #1A1A1A",
+                      cursor: "pointer", fontFamily: "Inter, sans-serif",
+                      display: "flex", alignItems: "center", justifyContent: "center", gap: "6px",
+                    }}
+                  >
+                    <span>✦</span> Ask AI to generate a swap
+                  </button>
+                </div>
+              </>
             )}
           </div>
         </div>

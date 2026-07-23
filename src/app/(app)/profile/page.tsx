@@ -184,6 +184,39 @@ export default function ProfilePage() {
             </div>
           </div>
 
+          {/* Plan Settings */}
+          <div>
+            <p style={{ fontSize: "11px", fontWeight: 700, color: "#9B9B9B", textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: "10px", paddingLeft: "4px" }}>
+              Plan Settings
+            </p>
+            <a href="/settings/cadence" style={{ textDecoration: "none" }}>
+              <div style={{
+                background: "white", border: "1px solid #E8E8E8", borderRadius: "16px",
+                padding: "16px", display: "flex", alignItems: "center", gap: "12px",
+              }}>
+                <div style={{
+                  width: "40px", height: "40px", borderRadius: "10px",
+                  background: "#EEF5F1", display: "flex", alignItems: "center",
+                  justifyContent: "center", flexShrink: 0,
+                }}>
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#2E7D52" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+                    <line x1="16" y1="2" x2="16" y2="6"/>
+                    <line x1="8" y1="2" x2="8" y2="6"/>
+                    <line x1="3" y1="10" x2="21" y2="10"/>
+                  </svg>
+                </div>
+                <div style={{ flex: 1 }}>
+                  <p style={{ fontSize: "14px", fontWeight: 700, color: "#1A1A1A" }}>Plan Cadence</p>
+                  <p style={{ fontSize: "12px", color: "#9B9B9B", marginTop: "1px" }}>How often your meals repeat</p>
+                </div>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#BBBBBB" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <polyline points="9 18 15 12 9 6"/>
+                </svg>
+              </div>
+            </a>
+          </div>
+
           {/* MFP Integration */}
           <div>
             <p style={{ fontSize: "11px", fontWeight: 700, color: "#9B9B9B", textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: "10px", paddingLeft: "4px" }}>

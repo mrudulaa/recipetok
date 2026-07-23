@@ -197,23 +197,39 @@ export default function AIChatPage() {
         background: "white", flexShrink: 0,
       }}>
         <div style={{ display: "flex", gap: "10px", alignItems: "flex-end", maxWidth: "480px", margin: "0 auto" }}>
-          <input
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && (e.preventDefault(), send(input))}
-            placeholder="Tell me what's changing today..."
-            style={{
-              flex: 1, background: "#F5F5F5", border: "none", borderRadius: "14px",
-              padding: "12px 16px", fontSize: "14px", color: "#1A1A1A",
-              fontFamily: "Inter, sans-serif", outline: "none", resize: "none",
-            }}
-          />
+          <div style={{ flex: 1, position: "relative", display: "flex", alignItems: "center" }}>
+            <input
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && (e.preventDefault(), send(input))}
+              placeholder="Message AI Planner..."
+              style={{
+                width: "100%", background: "#F5F5F5", border: "none", borderRadius: "14px",
+                padding: "12px 44px 12px 16px", fontSize: "14px", color: "#1A1A1A",
+                fontFamily: "Inter, sans-serif", outline: "none", boxSizing: "border-box",
+              }}
+            />
+            <button
+              style={{
+                position: "absolute", right: "12px",
+                background: "none", border: "none", cursor: "pointer", padding: "0",
+                display: "flex", alignItems: "center", justifyContent: "center",
+              }}
+            >
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#9B9B9B" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
+                <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+                <line x1="12" y1="19" x2="12" y2="23"/>
+                <line x1="8" y1="23" x2="16" y2="23"/>
+              </svg>
+            </button>
+          </div>
           <button
             onClick={() => send(input)}
             disabled={!input.trim() || loading}
             style={{
-              width: "44px", height: "44px", borderRadius: "12px",
-              background: input.trim() && !loading ? "#1A1A1A" : "#E8E8E8",
+              width: "44px", height: "44px", borderRadius: "50%",
+              background: input.trim() && !loading ? "#2E7D52" : "#E8E8E8",
               border: "none", cursor: input.trim() && !loading ? "pointer" : "not-allowed",
               display: "flex", alignItems: "center", justifyContent: "center",
               flexShrink: 0, transition: "background 0.15s",
