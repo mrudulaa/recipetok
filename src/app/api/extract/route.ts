@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import OpenAI from "openai";
-import { createClient } from "@/utils/supabase/server";
+import { getApiUser } from "@/utils/supabase/api-auth";
 
 // Fetch TikTok oEmbed metadata
 async function fetchTikTokMeta(url: string) {
@@ -22,19 +22,7 @@ export async function POST(req: NextRequest) {
         : { apiKey: forgeKey, baseURL: forgeUrl ? `${forgeUrl}/v1` : undefined } // Manus forge - sandbox only
     );
 
-    const supabase = await createClient();
-
-    // Support both cookie-based auth and Bearer token auth
-    const authHeader = req.headers.get("authorization");
-    let user: any = null;
-    if (authHeader?.startsWith("Bearer ")) {
-      const token = authHeader.slice(7);
-      const { data } = await supabase.auth.getUser(token);
-      user = data.user;
-    } else {
-      const { data } = await supabase.auth.getUser();
-      user = data.user;
-    }
+    const { user, supabase } = await getApiUser(req);
     if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     const { url } = await req.json();

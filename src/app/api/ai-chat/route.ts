@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@/utils/supabase/server";
+import { getApiUser } from "@/utils/supabase/api-auth";
 import OpenAI from "openai";
 
 function getWeekStart() {
@@ -18,16 +18,8 @@ function getTodayIndex() {
 
 export async function POST(req: NextRequest) {
   try {
-    const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
-
-    // Also check Authorization header
-    if (!user) {
-      const authHeader = req.headers.get("authorization");
-      if (!authHeader?.startsWith("Bearer ")) {
-        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-      }
-    }
+    const { user, supabase } = await getApiUser(req);
+    if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     const { message, history } = await req.json();
     if (!message) return NextResponse.json({ error: "Message required" }, { status: 400 });
