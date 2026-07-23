@@ -293,29 +293,35 @@ export default function PlannerPage() {
       {/* Swap Meal Modal */}
       {swapPicker && (
         <div
-          style={{ position: "fixed", inset: 0, zIndex: 50, display: "flex", alignItems: "flex-end", justifyContent: "center" }}
+          style={{ position: "fixed", inset: 0, zIndex: 50, display: "flex", alignItems: "center", justifyContent: "center", padding: "24px" }}
           onClick={() => { setSwapPicker(null); setAiSwapResult(null); }}
         >
-          <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.4)" }} />
+          <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.5)" }} />
           <div
             style={{
-              position: "relative", background: "white", borderRadius: "24px 24px 0 0",
-              width: "100%", maxWidth: "480px", padding: "20px 20px 0",
-              maxHeight: "80vh", display: "flex", flexDirection: "column",
+              position: "relative", background: "white", borderRadius: "20px",
+              width: "100%", maxWidth: "420px", padding: "20px",
+              maxHeight: "75vh", display: "flex", flexDirection: "column",
+              boxShadow: "0 20px 60px rgba(0,0,0,0.3)",
             }}
             onClick={(e) => e.stopPropagation()}
           >
-            <div style={{ width: "36px", height: "4px", background: "#E8E8E8", borderRadius: "2px", margin: "0 auto 16px" }} />
-            <h3 style={{ fontSize: "18px", fontWeight: 800, color: "#1A1A1A", marginBottom: "4px", letterSpacing: "-0.02em" }}>
-              Swap Meal
-            </h3>
+            <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between" }}>
+              <h3 style={{ fontSize: "18px", fontWeight: 800, color: "#1A1A1A", marginBottom: "4px", letterSpacing: "-0.02em" }}>
+                Swap Meal
+              </h3>
+              <button
+                onClick={() => { setSwapPicker(null); setAiSwapResult(null); }}
+                style={{ background: "#F5F5F5", border: "none", borderRadius: "50%", width: "28px", height: "28px", cursor: "pointer", fontSize: "15px", color: "#9B9B9B", display: "flex", alignItems: "center", justifyContent: "center", lineHeight: 1, flexShrink: 0 }}
+              >×</button>
+            </div>
             <p style={{ fontSize: "13px", color: "#9B9B9B", marginBottom: "14px" }}>
               Current: {swapPicker.currentCalories} cal · {swapPicker.currentProtein}g P — showing similar options
             </p>
 
             {/* AI swap result */}
             {aiSwapResult ? (
-              <div style={{ paddingBottom: "32px" }}>
+              <div>
                 <div style={{
                   border: "1px solid #C8E6D8", borderRadius: "14px",
                   padding: "14px", marginBottom: "12px", background: "#F0F7F4",
@@ -357,7 +363,7 @@ export default function PlannerPage() {
                 </button>
               </div>
             ) : aiSwapping ? (
-              <div style={{ paddingBottom: "32px", textAlign: "center", padding: "32px 0 48px" }}>
+              <div style={{ textAlign: "center", padding: "32px 0" }}>
                 <div style={{ fontSize: "28px", marginBottom: "12px" }}>✦</div>
                 <p style={{ fontSize: "15px", fontWeight: 600, color: "#1A1A1A", marginBottom: "4px" }}>Generating a swap for you...</p>
                 <p style={{ fontSize: "13px", color: "#9B9B9B" }}>AI is crafting the perfect option.</p>
@@ -413,7 +419,7 @@ export default function PlannerPage() {
                   </div>
                 )}
                 {/* Ask AI to generate a swap — pinned at bottom */}
-                <div style={{ paddingTop: "12px", paddingBottom: "32px", flexShrink: 0 }}>
+                <div style={{ paddingTop: "12px", flexShrink: 0 }}>
                   <button
                     onClick={generateAiSwap}
                     style={{
@@ -436,24 +442,28 @@ export default function PlannerPage() {
       {/* Recipe Picker Modal */}
       {picker && (
         <div
-          style={{ position: "fixed", inset: 0, zIndex: 50, display: "flex", alignItems: "flex-end", justifyContent: "center" }}
+          style={{ position: "fixed", inset: 0, zIndex: 50, display: "flex", alignItems: "center", justifyContent: "center", padding: "24px" }}
           onClick={() => setPicker(null)}
         >
-          <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.4)" }} />
+          <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.5)" }} />
           <div
             style={{
-              position: "relative", background: "white", borderRadius: "24px 24px 0 0",
-              width: "100%", maxWidth: "480px",
-              padding: "20px 20px 0",
-              paddingBottom: "max(24px, env(safe-area-inset-bottom, 24px))",
-              maxHeight: "80vh", display: "flex", flexDirection: "column",
+              position: "relative", background: "white", borderRadius: "20px",
+              width: "100%", maxWidth: "420px", padding: "20px",
+              maxHeight: "75vh", display: "flex", flexDirection: "column",
+              boxShadow: "0 20px 60px rgba(0,0,0,0.3)",
             }}
             onClick={(e) => e.stopPropagation()}
           >
-            <div style={{ width: "36px", height: "4px", background: "#E8E8E8", borderRadius: "2px", margin: "0 auto 20px" }} />
-            <h3 style={{ fontSize: "18px", fontWeight: 800, color: "#1A1A1A", marginBottom: "16px", letterSpacing: "-0.02em" }}>
-              {MEAL_ICONS[picker.meal]} {DAYS[picker.day]} — {picker.meal.charAt(0).toUpperCase() + picker.meal.slice(1)}
-            </h3>
+            <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: "16px" }}>
+              <h3 style={{ fontSize: "18px", fontWeight: 800, color: "#1A1A1A", letterSpacing: "-0.02em" }}>
+                {MEAL_ICONS[picker.meal]} {DAYS[picker.day]} — {picker.meal.charAt(0).toUpperCase() + picker.meal.slice(1)}
+              </h3>
+              <button
+                onClick={() => setPicker(null)}
+                style={{ background: "#F5F5F5", border: "none", borderRadius: "50%", width: "28px", height: "28px", cursor: "pointer", fontSize: "15px", color: "#9B9B9B", display: "flex", alignItems: "center", justifyContent: "center", lineHeight: 1, flexShrink: 0 }}
+              >×</button>
+            </div>
             {recipes.length === 0 ? (
               <p style={{ fontSize: "14px", color: "#9B9B9B", textAlign: "center", padding: "32px 0" }}>No recipes yet. Import one first!</p>
             ) : (
