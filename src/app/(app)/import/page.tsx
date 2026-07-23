@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/utils/supabase/client";
 
@@ -7,25 +7,18 @@ export default function ImportPage() {
   const [url, setUrl] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [token, setToken] = useState<string | null>(null);
   const router = useRouter();
   const supabase = createClient();
-
-  useEffect(() => {
-    const load = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      setToken(session?.access_token || null);
-    };
-    load();
-  }, []);
 
   const handleExtract = async () => {
     if (!url.trim()) return;
     setLoading(true);
     setError("");
     try {
+      // Always fetch a fresh session token at call time to avoid stale state
+      const { data: { session } } = await supabase.auth.getSession();
       const headers: Record<string, string> = { "Content-Type": "application/json" };
-      if (token) headers["Authorization"] = `Bearer ${token}`;
+      if (session?.access_token) headers["Authorization"] = `Bearer ${session.access_token}`;
       const res = await fetch("/api/extract", { method: "POST", headers, body: JSON.stringify({ url: url.trim() }) });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Failed to extract recipe");
