@@ -9,7 +9,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       maxWidth: "480px",
       margin: "0 auto",
       position: "relative",
-      background: "#FAF8F4",
+      background: "#ffffff",
     }}>
       <main style={{ flex: 1, overflowY: "auto", overflowX: "hidden" }}>
         {children}

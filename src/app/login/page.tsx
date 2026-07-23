@@ -23,38 +23,32 @@ export default function LoginPage() {
   return (
     <div style={{
       minHeight: "100vh",
-      background: "#FAF8F4",
+      background: "#ffffff",
       display: "flex",
       flexDirection: "column",
       alignItems: "center",
       justifyContent: "center",
       padding: "32px 24px",
-      position: "relative",
     }}>
-      {/* Subtle warm gradient at top */}
-      <div style={{
-        position: "fixed", top: 0, left: 0, right: 0, height: "300px",
-        background: "linear-gradient(180deg, #F5EDE0 0%, transparent 100%)",
-        pointerEvents: "none",
-      }} />
+      <div style={{ width: "100%", maxWidth: "360px" }}>
 
-      <div style={{ width: "100%", maxWidth: "360px", position: "relative", zIndex: 1 }}>
         {/* Logo */}
         <div style={{ textAlign: "center", marginBottom: "48px" }}>
           <div style={{
             width: "64px", height: "64px", borderRadius: "18px",
-            background: "#D4522A",
+            background: "#1A1A1A",
             display: "flex", alignItems: "center", justifyContent: "center",
             fontSize: "30px", margin: "0 auto 20px",
-            boxShadow: "0 8px 24px rgba(212, 82, 42, 0.25)",
+            boxShadow: "0 4px 20px rgba(0,0,0,0.12)",
           }}>🍴</div>
-          <h1 className="serif" style={{
-            fontSize: "40px", fontWeight: 400, letterSpacing: "-0.02em",
-            color: "#1A1612", lineHeight: 1.05, marginBottom: "10px",
+          <h1 style={{
+            fontSize: "36px", fontWeight: 800, letterSpacing: "-0.03em",
+            color: "#1A1A1A", lineHeight: 1.05, marginBottom: "10px",
+            fontFamily: "Inter, sans-serif",
           }}>
             RecipeTok
           </h1>
-          <p style={{ color: "#6B5E52", fontSize: "16px", lineHeight: 1.5 }}>
+          <p style={{ color: "#9B9B9B", fontSize: "15px", lineHeight: 1.5 }}>
             From TikTok to your table.
           </p>
         </div>
@@ -62,11 +56,11 @@ export default function LoginPage() {
         {/* Feature highlights */}
         <div style={{
           background: "white",
-          border: "1px solid #E8E3D8",
+          border: "1px solid #E8E8E8",
           borderRadius: "20px",
           padding: "24px",
           marginBottom: "28px",
-          boxShadow: "0 2px 8px rgba(26, 22, 18, 0.05)",
+          boxShadow: "0 2px 8px rgba(0,0,0,0.05)",
           display: "flex",
           flexDirection: "column",
           gap: "16px",
@@ -80,13 +74,13 @@ export default function LoginPage() {
             <div key={f.title} style={{ display: "flex", alignItems: "center", gap: "14px" }}>
               <span style={{
                 width: "40px", height: "40px", borderRadius: "12px",
-                background: "#FAF8F4", border: "1px solid #E8E3D8",
+                background: "#F5F5F5", border: "1px solid #E8E8E8",
                 display: "flex", alignItems: "center", justifyContent: "center",
                 fontSize: "18px", flexShrink: 0,
               }}>{f.icon}</span>
               <div>
-                <p style={{ fontSize: "14px", fontWeight: 600, color: "#1A1612", lineHeight: 1.2 }}>{f.title}</p>
-                <p style={{ fontSize: "12px", color: "#A89880", marginTop: "1px" }}>{f.desc}</p>
+                <p style={{ fontSize: "14px", fontWeight: 600, color: "#1A1A1A", lineHeight: 1.2 }}>{f.title}</p>
+                <p style={{ fontSize: "12px", color: "#9B9B9B", marginTop: "1px" }}>{f.desc}</p>
               </div>
             </div>
           ))}
@@ -94,7 +88,7 @@ export default function LoginPage() {
 
         {error && (
           <div style={{
-            background: "#FEF2EE", border: "1px solid rgba(212,82,42,0.2)",
+            background: "#FDF2F1", border: "1px solid rgba(192,57,43,0.2)",
             borderRadius: "12px", padding: "12px 16px", marginBottom: "16px",
             fontSize: "13px", color: "#C0392B",
           }}>
@@ -109,10 +103,10 @@ export default function LoginPage() {
           style={{
             width: "100%",
             background: "white",
-            border: "1.5px solid #E8E3D8",
+            border: "1.5px solid #E8E8E8",
             borderRadius: "14px",
-            color: "#1A1612",
-            fontWeight: 500,
+            color: "#1A1A1A",
+            fontWeight: 600,
             padding: "15px 24px",
             fontSize: "15px",
             cursor: loading ? "not-allowed" : "pointer",
@@ -120,15 +114,15 @@ export default function LoginPage() {
             alignItems: "center",
             justifyContent: "center",
             gap: "12px",
-            transition: "all 0.2s ease",
+            transition: "all 0.15s ease",
             fontFamily: "Inter, sans-serif",
             marginBottom: "12px",
             opacity: loading ? 0.6 : 1,
-            boxShadow: "0 1px 3px rgba(26,22,18,0.06)",
+            boxShadow: "0 1px 3px rgba(0,0,0,0.06)",
           }}
         >
           {loading ? (
-            <span style={{ color: "#A89880" }}>Redirecting to Google...</span>
+            <span style={{ color: "#9B9B9B" }}>Redirecting to Google...</span>
           ) : (
             <>
               <svg width="20" height="20" viewBox="0 0 24 24">
@@ -147,27 +141,27 @@ export default function LoginPage() {
           disabled={loading}
           style={{
             width: "100%",
-            background: "#D4522A",
+            background: "#1A1A1A",
             border: "none",
             borderRadius: "14px",
             color: "white",
-            fontWeight: 600,
+            fontWeight: 700,
             padding: "15px 24px",
             fontSize: "15px",
             cursor: loading ? "not-allowed" : "pointer",
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
-            transition: "all 0.2s ease",
+            transition: "opacity 0.15s ease",
             fontFamily: "Inter, sans-serif",
-            boxShadow: "0 4px 16px rgba(212, 82, 42, 0.28)",
+            boxShadow: "0 4px 20px rgba(0,0,0,0.12)",
             opacity: loading ? 0.6 : 1,
           }}
         >
-          Get started — it's free
+          Get started — it&apos;s free
         </button>
 
-        <p style={{ textAlign: "center", fontSize: "12px", color: "#C4B8A8", marginTop: "20px" }}>
+        <p style={{ textAlign: "center", fontSize: "12px", color: "#BBBBBB", marginTop: "20px" }}>
           Your data is private and never shared.
         </p>
       </div>

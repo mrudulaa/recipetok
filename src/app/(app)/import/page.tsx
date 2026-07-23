@@ -3,44 +3,37 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/utils/supabase/client";
 
-interface Goals {
-  daily_calories: number;
-  daily_protein: number;
-  daily_carbs: number;
-  daily_fat: number;
-}
-
-interface DailyTotals {
-  calories: number;
-  protein: number;
-  carbs: number;
-  fat: number;
-}
-
 export default function ImportPage() {
   const [url, setUrl] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [goals, setGoals] = useState<Goals | null>(null);
-  const [totals, setTotals] = useState<DailyTotals>({ calories: 0, protein: 0, carbs: 0, fat: 0 });
-  const [session, setSession] = useState<any>(null);
+  const [token, setToken] = useState<string | null>(null);
+  const [goals, setGoals] = useState<any>(null);
+  const [mfpData, setMfpData] = useState<any>(null);
+  const [userName, setUserName] = useState("");
   const router = useRouter();
+  const supabase = createClient();
 
   useEffect(() => {
     const load = async () => {
-      const supabase = createClient();
       const { data: { session } } = await supabase.auth.getSession();
-      setSession(session);
-      if (!session) return;
-      const { data: g } = await supabase.from("user_goals").select("*").eq("user_id", session.user.id).single();
-      if (g) setGoals(g);
-      const today = new Date().toISOString().split("T")[0];
-      const res = await fetch(`/api/food/log?date=${today}`, {
-        headers: { Authorization: `Bearer ${session.access_token}` },
-      });
-      if (res.ok) {
-        const data = await res.json();
-        setTotals(data.totals || { calories: 0, protein: 0, carbs: 0, fat: 0 });
+      const { data: { user } } = await supabase.auth.getUser();
+      setToken(session?.access_token || null);
+      if (user) {
+        const name = user.user_metadata?.full_name || user.email?.split("@")[0] || "there";
+        setUserName(name.split(" ")[0]);
+        const { data: g } = await supabase.from("user_goals").select("*").eq("user_id", user.id).single();
+        if (g) {
+          setGoals(g);
+          if (g.mfp_username) {
+            try {
+              const headers: Record<string, string> = {};
+              if (session?.access_token) headers["Authorization"] = `Bearer ${session.access_token}`;
+              const res = await fetch(`/api/mfp?username=${g.mfp_username}`, { headers });
+              if (res.ok) setMfpData(await res.json());
+            } catch {}
+          }
+        }
       }
     };
     load();
@@ -51,103 +44,71 @@ export default function ImportPage() {
     setLoading(true);
     setError("");
     try {
-      const supabase = createClient();
-      const { data: { session } } = await supabase.auth.getSession();
-      const res = await fetch("/api/extract", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          ...(session ? { Authorization: `Bearer ${session.access_token}` } : {}),
-        },
-        body: JSON.stringify({ url: url.trim() }),
-      });
+      const headers: Record<string, string> = { "Content-Type": "application/json" };
+      if (token) headers["Authorization"] = `Bearer ${token}`;
+      const res = await fetch("/api/extract", { method: "POST", headers, body: JSON.stringify({ url: url.trim() }) });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Extraction failed");
-      router.push(`/recipes/${data.recipeId}`);
-    } catch (err: any) {
-      setError(err.message);
+      if (!res.ok) throw new Error(data.error || "Failed to extract recipe");
+      router.push(`/recipes/${data.id}`);
+    } catch (e: any) {
+      setError(e.message || "Something went wrong. Please try again.");
+    } finally {
       setLoading(false);
     }
   };
 
-  const hour = new Date().getHours();
-  const greeting = hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening";
-  const today = new Date().toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" });
+  const getGreeting = () => {
+    const h = new Date().getHours();
+    if (h < 12) return "Good morning";
+    if (h < 17) return "Good afternoon";
+    return "Good evening";
+  };
 
-  const macros = [
-    { key: "calories", label: "Calories", unit: "kcal", color: "#D4522A", bg: "#FEF2EE", value: totals.calories, goal: goals?.daily_calories || 2000 },
-    { key: "protein", label: "Protein", unit: "g", color: "#4A7C59", bg: "#EEF5F1", value: totals.protein, goal: goals?.daily_protein || 150 },
-    { key: "carbs", label: "Carbs", unit: "g", color: "#B8860B", bg: "#FDF8EC", value: totals.carbs, goal: goals?.daily_carbs || 200 },
-    { key: "fat", label: "Fat", unit: "g", color: "#5B6FA8", bg: "#EEF0F8", value: totals.fat, goal: goals?.daily_fat || 65 },
-  ];
+  const macros = goals ? [
+    { label: "calories", value: mfpData?.calories ?? 0, goal: goals.daily_calories, color: "#C0392B", bg: "#FDF2F1" },
+    { label: "protein", value: mfpData?.protein ?? 0, goal: goals.daily_protein, color: "#2E7D52", bg: "#EEF5F1", unit: "g" },
+    { label: "carbs", value: mfpData?.carbs ?? 0, goal: goals.daily_carbs, color: "#8B6914", bg: "#FDF8EE", unit: "g" },
+    { label: "fat", value: mfpData?.fat ?? 0, goal: goals.daily_fat, color: "#3D5A8A", bg: "#EEF1F8", unit: "g" },
+  ] : [];
 
   return (
-    <div style={{
-      minHeight: "100vh",
-      background: "#FAF8F4",
-      paddingBottom: "calc(80px + env(safe-area-inset-bottom, 0px))",
-    }}>
-      {/* Warm gradient header band */}
-      <div style={{
-        background: "linear-gradient(180deg, #F5EDE0 0%, #FAF8F4 100%)",
-        padding: "20px 20px 24px",
-        marginBottom: "4px",
-      }}>
-        <p style={{ fontSize: "12px", color: "#A89880", fontWeight: 500, marginBottom: "6px" }}>
-          {today}
-        </p>
-        <h1 className="serif" style={{
-          fontSize: "34px", fontWeight: 400, letterSpacing: "-0.02em",
-          color: "#1A1612", lineHeight: 1.1, marginBottom: "4px",
-        }}>
-          {greeting} 👋
-        </h1>
-        <p style={{ color: "#6B5E52", fontSize: "14px" }}>
-          {goals ? "Here's your macro progress today." : "Paste a TikTok link to extract a recipe."}
-        </p>
-      </div>
+    <div style={{ minHeight: "100vh", background: "#fff", paddingBottom: "calc(72px + env(safe-area-inset-bottom, 0px))" }}>
+      <div style={{ maxWidth: "480px", margin: "0 auto" }}>
 
-      <div style={{ padding: "0 16px", maxWidth: "480px", margin: "0 auto" }}>
-
-        {/* Macro Dashboard */}
-        {goals && (
-          <div style={{
-            background: "white",
-            border: "1px solid #E8E3D8",
-            borderRadius: "20px",
-            padding: "20px",
-            marginBottom: "20px",
-            boxShadow: "0 2px 8px rgba(26,22,18,0.05)",
-          }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px" }}>
-              <span className="section-label">Today's Macros</span>
-              <a href="/profile" style={{ fontSize: "12px", color: "#D4522A", textDecoration: "none", fontWeight: 500 }}>
-                Edit goals →
-              </a>
+        {/* Header */}
+        <div style={{ padding: "20px 20px 0", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+            <div style={{
+              width: "36px", height: "36px", borderRadius: "50%",
+              background: "#1A1A1A", display: "flex", alignItems: "center",
+              justifyContent: "center", color: "white", fontWeight: 700, fontSize: "14px",
+            }}>
+              {userName?.[0]?.toUpperCase() || "R"}
             </div>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
+            <div>
+              <p style={{ fontSize: "12px", color: "#9B9B9B", fontWeight: 400 }}>{getGreeting()}</p>
+              <p style={{ fontSize: "15px", fontWeight: 700, color: "#1A1A1A", letterSpacing: "-0.01em" }}>{userName || "there"}</p>
+            </div>
+          </div>
+          <div style={{ fontSize: "22px", fontWeight: 800, letterSpacing: "-0.03em", color: "#1A1A1A" }}>RecipeTok</div>
+        </div>
+
+        {/* Macro dashboard */}
+        {goals && (
+          <div style={{ padding: "20px 20px 0" }}>
+            <div style={{ display: "flex", gap: "8px" }}>
               {macros.map((m) => {
-                const pct = Math.min((m.value / m.goal) * 100, 100);
-                const over = m.value > m.goal;
+                const pct = Math.min(100, Math.round((m.value / m.goal) * 100));
                 return (
-                  <div key={m.key} style={{
-                    background: m.bg,
-                    borderRadius: "14px",
-                    padding: "14px",
-                    border: `1px solid ${m.color}18`,
+                  <div key={m.label} style={{
+                    flex: 1, background: m.bg, borderRadius: "14px", padding: "12px 10px",
                   }}>
-                    <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "6px" }}>
-                      <span style={{ fontSize: "11px", color: "#6B5E52", fontWeight: 500 }}>{m.label}</span>
-                      <span style={{ fontSize: "10px", color: over ? "#C0392B" : "#A89880" }}>
-                        /{m.goal}{m.unit}
-                      </span>
-                    </div>
-                    <div style={{ fontSize: "22px", fontWeight: 700, color: m.color, letterSpacing: "-0.02em", marginBottom: "8px", fontFamily: "Inter, sans-serif" }}>
-                      {Math.round(m.value)}
-                      <span style={{ fontSize: "11px", fontWeight: 400, color: "#A89880", marginLeft: "2px" }}>{m.unit}</span>
-                    </div>
-                    <div className="macro-bar">
-                      <div className="macro-bar-fill" style={{ width: `${pct}%`, background: m.color }} />
+                    <p style={{ fontSize: "18px", fontWeight: 800, color: m.color, letterSpacing: "-0.03em", lineHeight: 1 }}>
+                      {m.value}{m.unit || ""}
+                    </p>
+                    <p style={{ fontSize: "10px", color: "#9B9B9B", marginTop: "3px", fontWeight: 500 }}>{m.label}</p>
+                    <div style={{ marginTop: "8px", height: "3px", background: "rgba(0,0,0,0.08)", borderRadius: "2px" }}>
+                      <div style={{ width: `${pct}%`, height: "100%", background: m.color, borderRadius: "2px", transition: "width 0.6s ease" }} />
                     </div>
                   </div>
                 );
@@ -156,69 +117,40 @@ export default function ImportPage() {
           </div>
         )}
 
-        {/* Set Goals CTA */}
-        {!goals && (
-          <a href="/profile" style={{ textDecoration: "none", display: "block", marginBottom: "20px" }}>
-            <div style={{
-              background: "white",
-              border: "1.5px dashed #D4522A",
-              borderRadius: "16px",
-              padding: "18px",
-              display: "flex",
-              alignItems: "center",
-              gap: "14px",
-              cursor: "pointer",
-              boxShadow: "0 2px 8px rgba(26,22,18,0.04)",
-            }}>
-              <div style={{
-                width: "44px", height: "44px", borderRadius: "12px",
-                background: "#FEF2EE", display: "flex", alignItems: "center", justifyContent: "center",
-                fontSize: "20px", flexShrink: 0,
-              }}>🎯</div>
-              <div style={{ flex: 1 }}>
-                <p style={{ fontWeight: 600, color: "#1A1612", fontSize: "14px" }}>Set your macro goals</p>
-                <p style={{ color: "#A89880", fontSize: "12px", marginTop: "2px" }}>Track calories, protein, carbs & fat daily</p>
-              </div>
-              <span style={{ color: "#D4522A", fontSize: "18px" }}>→</span>
-            </div>
-          </a>
-        )}
+        {/* Import section */}
+        <div style={{ padding: "24px 20px 0" }}>
+          <p style={{ fontSize: "28px", fontWeight: 800, color: "#1A1A1A", letterSpacing: "-0.03em", lineHeight: 1.1, marginBottom: "6px" }}>
+            Import a Recipe
+          </p>
+          <p style={{ fontSize: "14px", color: "#9B9B9B", marginBottom: "20px" }}>
+            Paste any TikTok cooking video link
+          </p>
 
-        {/* Import Section */}
-        <div style={{
-          background: "white",
-          border: "1px solid #E8E3D8",
-          borderRadius: "20px",
-          padding: "20px",
-          marginBottom: "16px",
-          boxShadow: "0 2px 8px rgba(26,22,18,0.05)",
-        }}>
-          <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "14px" }}>
-            <div style={{
-              width: "36px", height: "36px", borderRadius: "10px",
-              background: "#FEF2EE", display: "flex", alignItems: "center", justifyContent: "center",
-              fontSize: "18px",
-            }}>📱</div>
-            <div>
-              <p style={{ fontWeight: 600, color: "#1A1612", fontSize: "15px" }}>Import from TikTok</p>
-              <p style={{ color: "#A89880", fontSize: "12px" }}>Paste a cooking video link below</p>
-            </div>
+          <div style={{ position: "relative", marginBottom: "12px" }}>
+            <input
+              className="input-field"
+              type="url"
+              value={url}
+              onChange={(e) => setUrl(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && handleExtract()}
+              placeholder="https://www.tiktok.com/@..."
+              style={{ paddingRight: "48px" }}
+            />
+            {url && (
+              <button
+                onClick={() => setUrl("")}
+                style={{
+                  position: "absolute", right: "14px", top: "50%", transform: "translateY(-50%)",
+                  background: "none", border: "none", cursor: "pointer", color: "#9B9B9B", fontSize: "18px", lineHeight: 1,
+                }}
+              >×</button>
+            )}
           </div>
-
-          <input
-            className="input-field"
-            type="url"
-            value={url}
-            onChange={(e) => setUrl(e.target.value)}
-            placeholder="https://www.tiktok.com/@creator/video/..."
-            onKeyDown={(e) => e.key === "Enter" && handleExtract()}
-            style={{ marginBottom: "12px" }}
-          />
 
           {error && (
             <div style={{
-              background: "#FEF2EE", border: "1px solid rgba(212,82,42,0.2)",
-              borderRadius: "10px", padding: "10px 14px", marginBottom: "12px",
+              background: "#FDF2F1", border: "1px solid rgba(192,57,43,0.2)",
+              borderRadius: "10px", padding: "12px 14px", marginBottom: "12px",
               fontSize: "13px", color: "#C0392B",
             }}>
               {error}
@@ -226,50 +158,64 @@ export default function ImportPage() {
           )}
 
           <button
-            className="btn-primary"
             onClick={handleExtract}
             disabled={loading || !url.trim()}
-            style={{ width: "100%" }}
+            className="btn-primary"
+            style={{ width: "100%", fontSize: "15px" }}
           >
             {loading ? (
               <>
-                <svg style={{ animation: "spin 1s linear infinite" }} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                  <path d="M21 12a9 9 0 1 1-6.219-8.56"/>
-                </svg>
+                <span className="animate-spin" style={{ display: "inline-block", width: "16px", height: "16px", border: "2px solid rgba(255,255,255,0.3)", borderTopColor: "white", borderRadius: "50%" }} />
                 Extracting recipe...
               </>
             ) : (
-              <>
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                  <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
-                </svg>
-                Extract Recipe
-              </>
+              <>Extract Recipe →</>
             )}
           </button>
         </div>
 
         {/* How it works */}
-        <div style={{ display: "flex", gap: "8px" }}>
-          {[
-            { icon: "📱", text: "Copy link in TikTok" },
-            { icon: "🤖", text: "AI parses recipe" },
-            { icon: "💪", text: "Get macros + swaps" },
-          ].map((step, i) => (
-            <div key={i} style={{
-              flex: 1,
-              background: "white",
-              border: "1px solid #E8E3D8",
-              borderRadius: "14px",
-              padding: "14px 8px",
-              textAlign: "center",
-              boxShadow: "0 1px 4px rgba(26,22,18,0.04)",
-            }}>
-              <div style={{ fontSize: "20px", marginBottom: "6px" }}>{step.icon}</div>
-              <p style={{ fontSize: "11px", color: "#6B5E52", lineHeight: 1.4, fontWeight: 500 }}>{step.text}</p>
-            </div>
-          ))}
+        <div style={{ padding: "28px 20px 0" }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "14px" }}>
+            <p style={{ fontSize: "17px", fontWeight: 700, color: "#1A1A1A", letterSpacing: "-0.01em" }}>How it works</p>
+          </div>
+          <div style={{ display: "flex", gap: "12px" }}>
+            {[
+              { num: "1", title: "Paste link", desc: "Copy any TikTok cooking video URL" },
+              { num: "2", title: "AI extracts", desc: "We parse the recipe and ingredients" },
+              { num: "3", title: "Get macros", desc: "Calories, protein, carbs, fat + swaps" },
+            ].map((step) => (
+              <div key={step.num} style={{ flex: 1, background: "#F5F5F5", borderRadius: "14px", padding: "14px 12px" }}>
+                <div style={{
+                  width: "28px", height: "28px", borderRadius: "50%", background: "#1A1A1A",
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  color: "white", fontWeight: 800, fontSize: "13px", marginBottom: "8px",
+                }}>
+                  {step.num}
+                </div>
+                <p style={{ fontSize: "13px", fontWeight: 700, color: "#1A1A1A", marginBottom: "3px" }}>{step.title}</p>
+                <p style={{ fontSize: "11px", color: "#9B9B9B", lineHeight: 1.4 }}>{step.desc}</p>
+              </div>
+            ))}
+          </div>
         </div>
+
+        {/* Quick tip */}
+        <div style={{ padding: "20px 20px 0" }}>
+          <div style={{
+            background: "#F5F5F5", borderRadius: "14px", padding: "14px 16px",
+            display: "flex", alignItems: "flex-start", gap: "10px",
+          }}>
+            <span style={{ fontSize: "18px", flexShrink: 0 }}>💡</span>
+            <div>
+              <p style={{ fontSize: "13px", fontWeight: 600, color: "#1A1A1A", marginBottom: "2px" }}>How to get the link</p>
+              <p style={{ fontSize: "12px", color: "#9B9B9B", lineHeight: 1.5 }}>
+                Open TikTok → tap Share on any cooking video → tap "Copy link" → paste it here
+              </p>
+            </div>
+          </div>
+        </div>
+
       </div>
     </div>
   );
