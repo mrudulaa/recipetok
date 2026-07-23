@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getApiUser } from "@/utils/supabase/api-auth";
-import OpenAI from "openai";
+import { createOpenAIClient } from "@/utils/openai-client";
 
 function getWeekStart() {
   const d = new Date();
@@ -76,10 +76,7 @@ If they ask a general nutrition question, answer it helpfully. If they want to s
 
 Always be encouraging and practical, not preachy.`;
 
-    const openai = new OpenAI({
-      apiKey: process.env.RECIPETOK_OPENAI_KEY || process.env.OPENAI_API_KEY,
-      baseURL: process.env.BUILT_IN_FORGE_API_URL ? `${process.env.BUILT_IN_FORGE_API_URL}/v1` : undefined,
-    });
+    const { client: openai, model } = createOpenAIClient();
 
     const messages: any[] = [
       { role: "system", content: systemPrompt },
@@ -88,7 +85,7 @@ Always be encouraging and practical, not preachy.`;
     ];
 
     const completion = await openai.chat.completions.create({
-      model: process.env.BUILT_IN_FORGE_API_URL ? "gpt-5-mini" : "gpt-4o-mini",
+      model,
       messages,
       max_completion_tokens: 300,
     });
