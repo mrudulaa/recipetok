@@ -172,9 +172,9 @@ export default function PlannerPage() {
           {MEALS.map((meal) => {
             const entry = getEntry(selectedDay, meal);
             return (
-              <div key={meal} style={{ marginBottom: "24px" }}>
+              <div key={meal} style={{ marginBottom: "16px" }}>
                 {/* Meal type header */}
-                <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "10px" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "6px" }}>
                   <span style={{ fontSize: "18px" }}>{MEAL_ICONS[meal]}</span>
                   <span style={{ fontSize: "16px", fontWeight: 700, color: "#1A1A1A", textTransform: "capitalize" }}>{meal}</span>
                 </div>
