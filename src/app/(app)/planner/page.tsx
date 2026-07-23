@@ -262,7 +262,7 @@ export default function PlannerPage() {
             style={{
               position: "relative", background: "white", borderRadius: "24px 24px 0 0",
               width: "100%", maxWidth: "480px", padding: "20px 20px 40px",
-              height: "85vh", display: "flex", flexDirection: "column",
+              maxHeight: "80vh", display: "flex", flexDirection: "column",
             }}
             onClick={(e) => e.stopPropagation()}
           >
@@ -337,7 +337,7 @@ export default function PlannerPage() {
             style={{
               position: "relative", background: "white", borderRadius: "24px 24px 0 0",
               width: "100%", maxWidth: "480px", padding: "20px 20px 40px",
-              height: "85vh", display: "flex", flexDirection: "column",
+              maxHeight: "80vh", display: "flex", flexDirection: "column",
             }}
             onClick={(e) => e.stopPropagation()}
           >
