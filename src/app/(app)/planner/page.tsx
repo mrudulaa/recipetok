@@ -4,11 +4,11 @@ import { createClient } from "@/utils/supabase/client";
 
 const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 const MEALS = ["breakfast", "lunch", "dinner"] as const;
-const MEAL_LABELS: Record<string, string> = { breakfast: "Breakfast", lunch: "Lunch", dinner: "Dinner" };
+const MEAL_LABELS: Record<string, string> = { breakfast: "breakfast", lunch: "lunch", dinner: "dinner" };
 const MEAL_ICONS: Record<string, string> = { breakfast: "🌅", lunch: "☀️", dinner: "🌙" };
 
-function getWeekStart(date = new Date()) {
-  const d = new Date(date);
+function getWeekStart() {
+  const d = new Date();
   const day = d.getDay();
   const diff = d.getDate() - day + (day === 0 ? -6 : 1);
   d.setDate(diff);
@@ -76,23 +76,21 @@ export default function PlannerPage() {
   };
 
   if (loading) return (
-    <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "200px", color: "#9B9B9B", fontSize: "14px" }}>
-      Loading...
-    </div>
+    <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "200px", color: "#9B9B9B", fontSize: "14px" }}>Loading...</div>
   );
 
   return (
-    <div style={{ minHeight: "100vh", background: "#ffffff", paddingBottom: "calc(72px + env(safe-area-inset-bottom, 0px))" }}>
+    <div style={{ minHeight: "100vh", background: "#ffffff", paddingBottom: "calc(80px + env(safe-area-inset-bottom, 0px))" }}>
       <div style={{ maxWidth: "480px", margin: "0 auto" }}>
 
         {/* Header */}
-        <div style={{ padding: "20px 20px 16px", background: "white", borderBottom: "1px solid #F2F2F2", position: "sticky", top: 0, zIndex: 10 }}>
-          <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between" }}>
+        <div style={{ padding: "20px 20px 0" }}>
+          <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: "4px" }}>
             <div>
-              <h1 style={{ fontSize: "28px", fontWeight: 800, letterSpacing: "-0.03em", color: "#1A1A1A", lineHeight: 1.1 }}>
+              <h1 style={{ fontSize: "32px", fontWeight: 800, letterSpacing: "-0.03em", color: "#1A1A1A", lineHeight: 1.1 }}>
                 This Week
               </h1>
-              <p style={{ color: "#9B9B9B", fontSize: "13px", marginTop: "3px" }}>
+              <p style={{ color: "#9B9B9B", fontSize: "14px", marginTop: "4px" }}>
                 {entries.length} meal{entries.length !== 1 ? "s" : ""} planned
               </p>
             </div>
@@ -101,64 +99,80 @@ export default function PlannerPage() {
               disabled={generating || entries.length === 0}
               style={{
                 background: "#1A1A1A", color: "white", fontWeight: 700,
-                padding: "9px 14px", borderRadius: "10px", border: "none",
-                fontSize: "13px", cursor: entries.length === 0 ? "not-allowed" : "pointer",
+                padding: "11px 16px", borderRadius: "12px", border: "none",
+                fontSize: "14px", cursor: entries.length === 0 ? "not-allowed" : "pointer",
                 opacity: entries.length === 0 ? 0.35 : 1,
                 display: "flex", alignItems: "center", gap: "6px",
-                fontFamily: "Inter, sans-serif",
+                fontFamily: "Inter, sans-serif", marginTop: "4px",
               }}
             >
-              {generating ? "..." : "🛒 Grocery list"}
+              {generating ? "..." : (
+                <>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/>
+                  </svg>
+                  Grocery List
+                </>
+              )}
             </button>
           </div>
         </div>
 
-        {/* Week grid */}
-        <div style={{ padding: "12px 16px 0", display: "flex", flexDirection: "column", gap: "10px" }}>
+        {/* Day cards */}
+        <div style={{ padding: "16px 16px 0", display: "flex", flexDirection: "column", gap: "10px" }}>
           {DAYS.map((day, dayIdx) => (
             <div key={day} style={{ background: "white", border: "1px solid #E8E8E8", borderRadius: "16px", overflow: "hidden" }}>
-              <div style={{ padding: "10px 16px", background: "#F5F5F5", borderBottom: "1px solid #F2F2F2" }}>
-                <p style={{ fontSize: "13px", fontWeight: 700, color: "#1A1A1A", letterSpacing: "-0.01em" }}>{day}</p>
+              {/* Day header */}
+              <div style={{ padding: "10px 16px", background: "#F5F5F5" }}>
+                <p style={{ fontSize: "14px", fontWeight: 700, color: "#1A1A1A" }}>{day}</p>
               </div>
-              <div>
-                {MEALS.map((meal, mealIdx) => {
-                  const entry = getEntry(dayIdx, meal);
-                  return (
-                    <div key={meal} style={{
-                      padding: "12px 16px", display: "flex", alignItems: "center", gap: "12px",
-                      borderTop: mealIdx > 0 ? "1px solid #F2F2F2" : "none",
-                    }}>
-                      <span style={{ fontSize: "15px", width: "20px", textAlign: "center", flexShrink: 0 }}>{MEAL_ICONS[meal]}</span>
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        {entry?.recipes ? (
-                          <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-                            {entry.recipes.thumbnail_url && (
-                              <img src={entry.recipes.thumbnail_url} alt="" style={{ width: "40px", height: "40px", borderRadius: "8px", objectFit: "cover", flexShrink: 0 }} />
-                            )}
-                            <div style={{ flex: 1, minWidth: 0 }}>
-                              <p style={{ fontSize: "13px", fontWeight: 600, color: "#1A1A1A", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                                {entry.recipes.title}
-                              </p>
-                              <p style={{ fontSize: "11px", color: "#9B9B9B", marginTop: "1px" }}>
-                                {entry.recipes.total_calories} cal · {entry.recipes.total_protein_g}g P
-                              </p>
-                            </div>
-                            <button onClick={() => removeEntry(dayIdx, meal)} style={{ color: "#BBBBBB", fontSize: "18px", background: "none", border: "none", cursor: "pointer", flexShrink: 0, lineHeight: 1, padding: "4px" }}>×</button>
-                          </div>
-                        ) : (
-                          <button
-                            onClick={() => setPicker({ day: dayIdx, meal })}
-                            style={{ fontSize: "13px", color: "#9B9B9B", background: "none", border: "none", cursor: "pointer", fontFamily: "Inter, sans-serif", padding: 0, display: "flex", alignItems: "center", gap: "4px" }}
-                          >
-                            <span style={{ fontSize: "14px", color: "#BBBBBB" }}>+</span>
-                            Add {MEAL_LABELS[meal].toLowerCase()}
-                          </button>
+              {/* Meal rows */}
+              {MEALS.map((meal, mealIdx) => {
+                const entry = getEntry(dayIdx, meal);
+                return (
+                  <div key={meal} style={{
+                    display: "flex", alignItems: "center", gap: "12px",
+                    padding: "12px 16px",
+                    borderTop: mealIdx > 0 ? "1px solid #F2F2F2" : "none",
+                  }}>
+                    {/* Meal icon */}
+                    <span style={{ fontSize: "16px", width: "22px", textAlign: "center", flexShrink: 0, opacity: 0.5 }}>{MEAL_ICONS[meal]}</span>
+
+                    {entry?.recipes ? (
+                      <>
+                        {entry.recipes.thumbnail_url && (
+                          <img src={entry.recipes.thumbnail_url} alt="" style={{ width: "44px", height: "44px", borderRadius: "8px", objectFit: "cover", flexShrink: 0 }} />
                         )}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <p style={{ fontSize: "14px", fontWeight: 600, color: "#1A1A1A", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                            {entry.recipes.title}
+                          </p>
+                          <p style={{ fontSize: "12px", color: "#9B9B9B", marginTop: "1px" }}>
+                            {entry.recipes.total_calories} cal · {entry.recipes.total_protein_g}g protein
+                          </p>
+                        </div>
+                        <button onClick={() => removeEntry(dayIdx, meal)} style={{
+                          color: "#BBBBBB", fontSize: "20px", background: "none", border: "none",
+                          cursor: "pointer", flexShrink: 0, lineHeight: 1, padding: "4px",
+                          fontFamily: "Inter, sans-serif",
+                        }}>×</button>
+                      </>
+                    ) : (
+                      <button
+                        onClick={() => setPicker({ day: dayIdx, meal })}
+                        style={{
+                          fontSize: "14px", color: "#9B9B9B", background: "none", border: "none",
+                          cursor: "pointer", fontFamily: "Inter, sans-serif", padding: 0,
+                          display: "flex", alignItems: "center", gap: "4px",
+                        }}
+                      >
+                        <span style={{ fontSize: "16px", color: "#BBBBBB" }}>+</span>
+                        Add {MEAL_LABELS[meal]}
+                      </button>
+                    )}
+                  </div>
+                );
+              })}
             </div>
           ))}
         </div>
@@ -167,16 +181,15 @@ export default function PlannerPage() {
       {/* Recipe Picker Modal */}
       {picker && (
         <div style={{ position: "fixed", inset: 0, zIndex: 50, display: "flex", alignItems: "flex-end", justifyContent: "center" }} onClick={() => setPicker(null)}>
-          <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.35)" }} />
+          <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.4)" }} />
           <div style={{
             position: "relative", background: "white", borderRadius: "24px 24px 0 0",
             width: "100%", maxWidth: "480px", padding: "20px 20px 40px",
             maxHeight: "70vh", display: "flex", flexDirection: "column",
-            boxShadow: "0 -8px 32px rgba(0,0,0,0.1)",
           }} onClick={(e) => e.stopPropagation()}>
             <div style={{ width: "36px", height: "4px", background: "#E8E8E8", borderRadius: "2px", margin: "0 auto 20px" }} />
-            <h3 style={{ fontSize: "17px", fontWeight: 700, color: "#1A1A1A", marginBottom: "16px" }}>
-              {MEAL_ICONS[picker.meal]} {DAYS[picker.day]} — {MEAL_LABELS[picker.meal]}
+            <h3 style={{ fontSize: "18px", fontWeight: 800, color: "#1A1A1A", marginBottom: "16px", letterSpacing: "-0.02em" }}>
+              {MEAL_ICONS[picker.meal]} {DAYS[picker.day]} — {picker.meal.charAt(0).toUpperCase() + picker.meal.slice(1)}
             </h3>
             {recipes.length === 0 ? (
               <p style={{ fontSize: "14px", color: "#9B9B9B", textAlign: "center", padding: "32px 0" }}>No recipes yet. Import one first!</p>
@@ -184,7 +197,7 @@ export default function PlannerPage() {
               <div style={{ overflowY: "auto", display: "flex", flexDirection: "column", gap: "8px" }}>
                 {recipes.map((r) => (
                   <button key={r.id} onClick={() => assignRecipe(r.id)} style={{
-                    width: "100%", textAlign: "left", background: "#F5F5F5",
+                    width: "100%", textAlign: "left", background: "white",
                     border: "1px solid #E8E8E8", borderRadius: "14px",
                     padding: "12px 14px", cursor: "pointer", fontFamily: "Inter, sans-serif",
                     display: "flex", alignItems: "center", gap: "12px",
