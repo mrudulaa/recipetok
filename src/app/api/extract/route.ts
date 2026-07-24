@@ -61,7 +61,7 @@ ${goalContext}
 
 CRITICAL RULES FOR INGREDIENTS:
 1. NO DUPLICATES: Each physical ingredient appears EXACTLY ONCE. If the caption lists both a brand name and a generic name for the same item (e.g. "Palmini noodles" and "pasta" when they're the same dish component), list them as separate items ONLY if the recipe genuinely uses both. Read the instructions carefully to determine this.
-2. EXCLUDE SIDE DISHES: If the caption or instructions mention a separate side dish (e.g. "mix greens and caesar salad kit" served alongside a pasta), DO NOT include the side dish ingredients in the main recipe. Only include ingredients that go INTO the main dish. Mention the side in the description instead.
+2. MULTI-PART RECIPES: Many TikTok recipes have multiple components — e.g. a main pasta PLUS a side salad, or a protein PLUS a sauce made separately. Assign every ingredient a "part" label naming its component (e.g. "Main", "Side Salad", "Sauce"). Use "Main" for single-component recipes. Side dishes and sauces should be their own parts with their own ingredients — do NOT mix their macros into the main dish silently, and do NOT drop them.
 3. USE THE CAPTION'S EXACT AMOUNTS: "1 lb ground beef" = 454g, "1/2 lb pasta" = 227g, "1 jar sauce" = ~680g (24oz), "2-3 tbsp cottage cheese" = ~40g. Convert to grams. Do NOT invent amounts like "150g" when the caption specifies otherwise.
 4. AMOUNTS ARE FULL-RECIPE amounts (what the whole recipe uses), NOT per-serving.
 5. Break multi-component dishes into raw ingredients; include all seasonings, sauces, oils, garnishes.
@@ -91,6 +91,7 @@ Return a JSON object with this exact structure:
   "ingredients": [
     {
       "name": "ground beef (90/10)",
+      "part": "Main",
       "amount": 454,
       "unit": "g",
       "calories_per_serving": 200,
@@ -115,7 +116,7 @@ Return a JSON object with this exact structure:
   ]
 }
 
-Note in the example: amount=454 is the FULL recipe amount; calories_per_serving=200 is 454g × 176cal/100g ÷ 4 servings. For each swappable ingredient, provide 1-3 goal-aware swaps based on the user's goals.`
+Note in the example: amount=454 is the FULL recipe amount; calories_per_serving=200 is 454g × 176cal/100g ÷ 4 servings. Every ingredient MUST have a "part" field. For each swappable ingredient, provide 1-3 goal-aware swaps based on the user's goals, and make sure swap nutrition uses the SAME per-serving basis as the original ingredient so the calorie difference is directly comparable.`
         },
         {
           role: "user",
@@ -185,6 +186,7 @@ Note in the example: amount=454 is the FULL recipe amount; calories_per_serving=
           fat_g: ing.fat_g,
           is_swappable: ing.is_swappable !== false,
           sort_order: i,
+          part: ing.part || "Main",
         })
         .select()
         .single();

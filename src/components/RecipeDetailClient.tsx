@@ -9,6 +9,50 @@ export default function RecipeDetailClient({ recipe }: { recipe: any }) {
   const multiplier = servings / totalServings; // scale macros per serving count
   const totalTime = (recipe.prep_time_minutes || 0) + (recipe.cook_time_minutes || 0);
 
+  // Group ingredients into parts (Main, Side Salad, Sauce, ...)
+  const parts: { name: string; ingredients: any[] }[] = [];
+  for (const ing of (recipe.ingredients || []).slice().sort((a: any, b: any) => a.sort_order - b.sort_order)) {
+    const partName = ing.part || "Main";
+    let part = parts.find((p) => p.name === partName);
+    if (!part) {
+      part = { name: partName, ingredients: [] };
+      parts.push(part);
+    }
+    part.ingredients.push(ing);
+  }
+  const multiPart = parts.length > 1;
+
+  // Per-part serving multipliers — each part can scale independently
+  const [partServings, setPartServings] = useState<Record<string, number>>({});
+  const getPartServings = (name: string) => partServings[name] ?? servings;
+  const setPartServingsFor = (name: string, val: number) =>
+    setPartServings((prev) => ({ ...prev, [name]: Math.max(0, val) }));
+
+  const partMultiplier = (name: string) => getPartServings(name) / totalServings;
+
+  // Per-part macro subtotals (per selected part servings)
+  const partTotals = (part: { name: string; ingredients: any[] }) => {
+    const m = partMultiplier(part.name);
+    return part.ingredients.reduce(
+      (acc, ing) => ({
+        cal: acc.cal + (ing.calories_per_serving || 0) * totalServings * m,
+        p: acc.p + Number(ing.protein_g || 0) * totalServings * m,
+        c: acc.c + Number(ing.carbs_g || 0) * totalServings * m,
+        f: acc.f + Number(ing.fat_g || 0) * totalServings * m,
+      }),
+      { cal: 0, p: 0, c: 0, f: 0 }
+    );
+  };
+
+  // Overall totals honoring per-part scaling (used for macro pills when multi-part)
+  const overall = parts.reduce(
+    (acc, part) => {
+      const t = partTotals(part);
+      return { cal: acc.cal + t.cal, p: acc.p + t.p, c: acc.c + t.c, f: acc.f + t.f };
+    },
+    { cal: 0, p: 0, c: 0, f: 0 }
+  );
+
   const scale = (val: number | null) => {
     if (!val) return 0;
     return Math.round(val * multiplier * 10) / 10;
@@ -66,13 +110,13 @@ export default function RecipeDetailClient({ recipe }: { recipe: any }) {
           )}
         </div>
 
-        {/* Macro pills — scaled by servings */}
+        {/* Macro pills — scaled by servings (honors per-part scaling when multi-part) */}
         <div style={{ display: "flex", gap: "8px", marginBottom: "20px", flexWrap: "wrap" }}>
           {[
-            { label: "cal", value: Math.round(scale(recipe.total_calories)), color: "#C0392B", bg: "#FDF2F1" },
-            { label: "g Protein", value: Math.round(scale(recipe.total_protein_g)), color: "#2E7D52", bg: "#EEF5F1" },
-            { label: "g Carbs", value: Math.round(scale(recipe.total_carbs_g)), color: "#8B6914", bg: "#FDF8EE" },
-            { label: "g Fat", value: Math.round(scale(recipe.total_fat_g)), color: "#3D5A8A", bg: "#EEF1F8" },
+            { label: "cal", value: Math.round(multiPart ? overall.cal / totalServings : scale(recipe.total_calories)), color: "#C0392B", bg: "#FDF2F1" },
+            { label: "g Protein", value: Math.round(multiPart ? overall.p / totalServings : scale(recipe.total_protein_g)), color: "#2E7D52", bg: "#EEF5F1" },
+            { label: "g Carbs", value: Math.round(multiPart ? overall.c / totalServings : scale(recipe.total_carbs_g)), color: "#8B6914", bg: "#FDF8EE" },
+            { label: "g Fat", value: Math.round(multiPart ? overall.f / totalServings : scale(recipe.total_fat_g)), color: "#3D5A8A", bg: "#EEF1F8" },
           ].map((m) => (
             <div key={m.label} style={{ background: m.bg, borderRadius: "10px", padding: "8px 14px", display: "flex", alignItems: "baseline", gap: "2px" }}>
               <span style={{ fontSize: "18px", fontWeight: 800, color: m.color, letterSpacing: "-0.03em", fontFamily: "Inter, sans-serif" }}>{m.value}</span>
@@ -139,36 +183,86 @@ export default function RecipeDetailClient({ recipe }: { recipe: any }) {
           <p style={{ fontSize: "14px", color: "#555555", lineHeight: 1.6, marginBottom: "24px" }}>{recipe.description}</p>
         )}
 
-        {/* Ingredients */}
+        {/* Ingredients — grouped by part with independent scaling */}
         {recipe.ingredients?.length > 0 && (
           <div style={{ marginBottom: "28px" }}>
             <h2 style={{ fontSize: "18px", fontWeight: 800, color: "#1A1A1A", letterSpacing: "-0.02em", marginBottom: "12px" }}>Ingredients</h2>
-            <div>
-              {recipe.ingredients
-                .sort((a: any, b: any) => a.sort_order - b.sort_order)
-                .map((ing: any, idx: number) => {
-                  const scaledAmt = Math.round(((ing.amount || 0) * multiplier) * 10) / 10;
-                  return (
-                    <div key={ing.id} style={{
-                      display: "flex", alignItems: "center", gap: "12px",
-                      paddingTop: "12px", paddingBottom: "12px",
-                      borderBottom: idx < recipe.ingredients.length - 1 ? "1px solid #F2F2F2" : "none",
+            {parts.map((part) => {
+              const m = partMultiplier(part.name);
+              const totals = partTotals(part);
+              const pServ = getPartServings(part.name);
+              return (
+                <div key={part.name} style={{ marginBottom: multiPart ? "20px" : "0" }}>
+                  {multiPart && (
+                    <div style={{
+                      display: "flex", alignItems: "center", justifyContent: "space-between",
+                      background: "#F5F5F5", borderRadius: "12px", padding: "10px 14px", marginBottom: "4px",
                     }}>
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <p style={{ fontSize: "15px", fontWeight: 500, color: "#1A1A1A", textTransform: "capitalize" }}>{ing.name}</p>
+                      <div style={{ minWidth: 0 }}>
+                        <p style={{ fontSize: "13px", fontWeight: 800, color: "#1A1A1A", textTransform: "uppercase", letterSpacing: "0.06em" }}>{part.name}</p>
+                        <p style={{ fontSize: "12px", color: "#9B9B9B", marginTop: "1px", fontFamily: "Inter, sans-serif" }}>
+                          {Math.round(totals.cal / totalServings)} cal · {Math.round(totals.p / totalServings)}g P per serving
+                        </p>
                       </div>
-                      <p style={{ fontSize: "14px", color: "#9B9B9B", flexShrink: 0, fontFamily: "Inter, sans-serif" }}>
-                        {scaledAmt}{ing.unit}
-                      </p>
-                      {ing.ingredient_swaps?.length > 0 ? (
-                        <SwapModal ingredient={ing} />
-                      ) : (
-                        <div style={{ width: "28px" }} />
-                      )}
+                      <div style={{ display: "flex", alignItems: "center", gap: "10px", flexShrink: 0 }}>
+                        <button
+                          onClick={() => setPartServingsFor(part.name, pServ - 1)}
+                          style={{
+                            width: "26px", height: "26px", borderRadius: "50%",
+                            background: pServ <= 0 ? "#E8E8E8" : "#1A1A1A",
+                            color: pServ <= 0 ? "#BBBBBB" : "white",
+                            border: "none", cursor: pServ <= 0 ? "not-allowed" : "pointer",
+                            fontSize: "16px", fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center",
+                            fontFamily: "Inter, sans-serif",
+                          }}
+                        >−</button>
+                        <span style={{ fontSize: "14px", fontWeight: 800, color: "#1A1A1A", minWidth: "20px", textAlign: "center", fontFamily: "Inter, sans-serif" }}>
+                          {pServ}×
+                        </span>
+                        <button
+                          onClick={() => setPartServingsFor(part.name, pServ + 1)}
+                          style={{
+                            width: "26px", height: "26px", borderRadius: "50%",
+                            background: "#1A1A1A", color: "white",
+                            border: "none", cursor: "pointer",
+                            fontSize: "16px", fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center",
+                            fontFamily: "Inter, sans-serif",
+                          }}
+                        >+</button>
+                      </div>
                     </div>
-                  );
-                })}
-            </div>
+                  )}
+                  {pServ === 0 && multiPart ? (
+                    <p style={{ fontSize: "13px", color: "#BBBBBB", fontStyle: "italic", padding: "10px 14px", fontFamily: "Inter, sans-serif" }}>
+                      Skipped — not counted in macros
+                    </p>
+                  ) : (
+                    part.ingredients.map((ing: any, idx: number) => {
+                      const scaledAmt = Math.round(((ing.amount || 0) * m) * 10) / 10;
+                      return (
+                        <div key={ing.id} style={{
+                          display: "flex", alignItems: "center", gap: "12px",
+                          paddingTop: "12px", paddingBottom: "12px",
+                          borderBottom: idx < part.ingredients.length - 1 ? "1px solid #F2F2F2" : "none",
+                        }}>
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <p style={{ fontSize: "15px", fontWeight: 500, color: "#1A1A1A", textTransform: "capitalize" }}>{ing.name}</p>
+                          </div>
+                          <p style={{ fontSize: "14px", color: "#9B9B9B", flexShrink: 0, fontFamily: "Inter, sans-serif" }}>
+                            {scaledAmt}{ing.unit}
+                          </p>
+                          {ing.ingredient_swaps?.length > 0 ? (
+                            <SwapModal ingredient={ing} />
+                          ) : (
+                            <div style={{ width: "28px" }} />
+                          )}
+                        </div>
+                      );
+                    })
+                  )}
+                </div>
+              );
+            })}
           </div>
         )}
 

@@ -56,6 +56,11 @@ export default function SwapModal({ ingredient }: { ingredient: any }) {
             <div style={{ overflowY: "auto", display: "flex", flexDirection: "column", gap: "10px" }}>
               {ingredient.ingredient_swaps.map((swap: any) => {
                 const benefit = BENEFIT_LABELS[swap.goal_benefit] || { label: swap.goal_benefit, color: "#555555", bg: "#F5F5F5" };
+                const calDiff = (swap.calories_per_serving || 0) - (ingredient.calories_per_serving || 0);
+                const pDiff = Number(swap.protein_g || 0) - Number(ingredient.protein_g || 0);
+                const cDiff = Number(swap.carbs_g || 0) - Number(ingredient.carbs_g || 0);
+                const fDiff = Number(swap.fat_g || 0) - Number(ingredient.fat_g || 0);
+                const fmtDiff = (v: number, unit: string) => `${v > 0 ? "+" : ""}${Math.round(v * 10) / 10}${unit}`;
                 return (
                   <div key={swap.id} style={{
                     background: "#FAFAFA", border: "1px solid #E8E8E8",
@@ -72,9 +77,46 @@ export default function SwapModal({ ingredient }: { ingredient: any }) {
                         {benefit.label}
                       </span>
                     </div>
-                    <p style={{ fontSize: "13px", color: "#9B9B9B", marginBottom: "6px", fontFamily: "Inter, sans-serif" }}>
+                    <p style={{ fontSize: "13px", color: "#9B9B9B", marginBottom: "8px", fontFamily: "Inter, sans-serif" }}>
                       {swap.swap_amount}{swap.swap_unit} · {swap.calories_per_serving} cal · {swap.protein_g}g P · {swap.carbs_g}g C · {swap.fat_g}g F
                     </p>
+                    {/* Delta chips vs original */}
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: "6px", marginBottom: swap.reason ? "8px" : "0" }}>
+                      <span style={{
+                        fontSize: "12px", fontWeight: 800, padding: "3px 10px", borderRadius: "100px",
+                        background: calDiff <= 0 ? "#EEF5F1" : "#FDF2F1",
+                        color: calDiff <= 0 ? "#2E7D52" : "#C0392B",
+                        fontFamily: "Inter, sans-serif",
+                      }}>
+                        {fmtDiff(calDiff, " cal")}
+                      </span>
+                      {pDiff !== 0 && (
+                        <span style={{
+                          fontSize: "12px", fontWeight: 700, padding: "3px 10px", borderRadius: "100px",
+                          background: pDiff >= 0 ? "#EEF5F1" : "#FDF8EE",
+                          color: pDiff >= 0 ? "#2E7D52" : "#8B6914",
+                          fontFamily: "Inter, sans-serif",
+                        }}>
+                          {fmtDiff(pDiff, "g P")}
+                        </span>
+                      )}
+                      {cDiff !== 0 && (
+                        <span style={{
+                          fontSize: "12px", fontWeight: 700, padding: "3px 10px", borderRadius: "100px",
+                          background: "#F5F5F5", color: "#555555", fontFamily: "Inter, sans-serif",
+                        }}>
+                          {fmtDiff(cDiff, "g C")}
+                        </span>
+                      )}
+                      {fDiff !== 0 && (
+                        <span style={{
+                          fontSize: "12px", fontWeight: 700, padding: "3px 10px", borderRadius: "100px",
+                          background: "#F5F5F5", color: "#555555", fontFamily: "Inter, sans-serif",
+                        }}>
+                          {fmtDiff(fDiff, "g F")}
+                        </span>
+                      )}
+                    </div>
                     {swap.reason && (
                       <p style={{ fontSize: "13px", color: "#555555", lineHeight: 1.5, fontFamily: "Inter, sans-serif" }}>{swap.reason}</p>
                     )}

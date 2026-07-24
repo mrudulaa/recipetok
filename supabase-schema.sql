@@ -48,8 +48,12 @@ create table if not exists ingredients (
   carbs_g numeric(6,1),
   fat_g numeric(6,1),
   is_swappable boolean default true,
-  sort_order int default 0
+  sort_order int default 0,
+  part text default 'Main' -- recipe component this ingredient belongs to (e.g. 'Main', 'Side Salad', 'Sauce')
 );
+
+-- Migration for existing databases:
+-- alter table ingredients add column if not exists part text default 'Main';
 
 -- Ingredient swaps
 create table if not exists ingredient_swaps (
