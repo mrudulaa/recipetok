@@ -7,8 +7,12 @@
 - [x] Fix extraction: exclude side dishes (Caesar salad kit) from main recipe nutrition
 - [x] Fix extraction: improve nutrition estimates with realistic per-ingredient values
 
-- [ ] Multi-part recipes: add part/component field to ingredients (main, side, sauce)
-- [ ] Multi-part recipes: update extraction prompt to group ingredients into parts
-- [ ] Multi-part recipes: recipe detail UI shows per-part sections with subtotal macros
-- [ ] Multi-part recipes: independent serving scaling per part
-- [ ] Swaps: show calorie/macro delta clearly on swap options
+- [x] Multi-part recipes: add part/component field to ingredients (main, side, sauce)
+- [x] Multi-part recipes: update extraction prompt to group ingredients into parts
+- [x] Multi-part recipes: recipe detail UI shows per-part sections with subtotal macros
+- [x] Multi-part recipes: independent serving scaling per part
+- [x] Swaps: show calorie/macro delta clearly on swap options
+
+- [ ] Remove top-level serving scaler for multi-part recipes (per-part scalers drive everything)
+- [ ] Add inline ingredient quantity editing (tap amount to edit, trash to remove)
+- [ ] Fix macro pills to be pure sum of per-part scaled totals (no stale recipe.total_* for multi-part)

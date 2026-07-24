@@ -5,58 +5,128 @@ import SwapModal from "./SwapModal";
 
 export default function RecipeDetailClient({ recipe }: { recipe: any }) {
   const totalServings = recipe.servings || 1;
-  const [servings, setServings] = useState(1); // default to 1 serving
-  const multiplier = servings / totalServings; // scale macros per serving count
+  const [servings, setServings] = useState(1);
   const totalTime = (recipe.prep_time_minutes || 0) + (recipe.cook_time_minutes || 0);
 
-  // Group ingredients into parts (Main, Side Salad, Sauce, ...)
-  const parts: { name: string; ingredients: any[] }[] = [];
-  for (const ing of (recipe.ingredients || []).slice().sort((a: any, b: any) => a.sort_order - b.sort_order)) {
-    const partName = ing.part || "Main";
-    let part = parts.find((p) => p.name === partName);
-    if (!part) {
-      part = { name: partName, ingredients: [] };
-      parts.push(part);
+  // Group ingredients into parts
+  const buildParts = (ings: any[]) => {
+    const parts: { name: string; ingredients: any[] }[] = [];
+    for (const ing of [...ings].sort((a, b) => a.sort_order - b.sort_order)) {
+      const name = ing.part || "Main";
+      let p = parts.find((x) => x.name === name);
+      if (!p) { p = { name, ingredients: [] }; parts.push(p); }
+      p.ingredients.push(ing);
     }
-    part.ingredients.push(ing);
-  }
+    return parts;
+  };
+
+  const [parts, setParts] = useState(() => buildParts(recipe.ingredients || []));
   const multiPart = parts.length > 1;
 
-  // Per-part serving multipliers — each part can scale independently
+  // Per-part serving counts (default = 1 for single-part, 1 for each part in multi-part)
   const [partServings, setPartServings] = useState<Record<string, number>>({});
-  const getPartServings = (name: string) => partServings[name] ?? servings;
-  const setPartServingsFor = (name: string, val: number) =>
+  const getPS = (name: string) => partServings[name] ?? 1;
+  const setPS = (name: string, val: number) =>
     setPartServings((prev) => ({ ...prev, [name]: Math.max(0, val) }));
 
-  const partMultiplier = (name: string) => getPartServings(name) / totalServings;
+  // Inline quantity overrides: { ingId -> multiplier (0 = removed) }
+  const [qtyOverride, setQtyOverride] = useState<Record<string, number | null>>({});
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editingVal, setEditingVal] = useState("");
 
-  // Per-part macro subtotals (per selected part servings)
+  const removeIngredient = (id: string) => {
+    setParts((prev) =>
+      prev.map((p) => ({ ...p, ingredients: p.ingredients.filter((i) => i.id !== id) }))
+    );
+    setQtyOverride((prev) => ({ ...prev, [id]: 0 }));
+  };
+
+  const startEdit = (ing: any, currentAmt: number) => {
+    setEditingId(ing.id);
+    setEditingVal(String(currentAmt));
+  };
+
+  const commitEdit = (ing: any, partName: string) => {
+    const parsed = parseFloat(editingVal);
+    if (!isNaN(parsed) && parsed >= 0) {
+      const baseAmt = ing.amount || 1;
+      const ps = getPS(partName);
+      const m = ps / totalServings;
+      // Store the ratio vs what the base amount would be at this scale
+      const newMultiplier = parsed / (baseAmt * m);
+      setQtyOverride((prev) => ({ ...prev, [ing.id]: newMultiplier }));
+    }
+    setEditingId(null);
+  };
+
+  // Compute effective amount for display
+  const effectiveAmt = (ing: any, partName: string) => {
+    const m = getPS(partName) / totalServings;
+    const override = qtyOverride[ing.id];
+    if (override !== undefined && override !== null) {
+      return Math.round((ing.amount || 0) * m * override * 10) / 10;
+    }
+    return Math.round((ing.amount || 0) * m * 10) / 10;
+  };
+
+  // Effective macro contribution for an ingredient (per-serving)
+  const ingMacro = (ing: any, partName: string, field: "calories_per_serving" | "protein_g" | "carbs_g" | "fat_g") => {
+    const override = qtyOverride[ing.id];
+    const mult = override !== undefined && override !== null ? override : 1;
+    const base = field === "calories_per_serving"
+      ? (ing.calories_per_serving || 0)
+      : Number(ing[field] || 0);
+    return base * mult;
+  };
+
+  // Part totals (for the selected number of part servings)
   const partTotals = (part: { name: string; ingredients: any[] }) => {
-    const m = partMultiplier(part.name);
+    const ps = getPS(part.name);
+    const m = ps / totalServings; // scale from 1-serving base to ps servings
     return part.ingredients.reduce(
-      (acc, ing) => ({
-        cal: acc.cal + (ing.calories_per_serving || 0) * totalServings * m,
-        p: acc.p + Number(ing.protein_g || 0) * totalServings * m,
-        c: acc.c + Number(ing.carbs_g || 0) * totalServings * m,
-        f: acc.f + Number(ing.fat_g || 0) * totalServings * m,
-      }),
+      (acc, ing) => {
+        const override = qtyOverride[ing.id];
+        const qm = override !== undefined && override !== null ? override : 1;
+        return {
+          cal: acc.cal + (ing.calories_per_serving || 0) * totalServings * m * qm,
+          p: acc.p + Number(ing.protein_g || 0) * totalServings * m * qm,
+          c: acc.c + Number(ing.carbs_g || 0) * totalServings * m * qm,
+          f: acc.f + Number(ing.fat_g || 0) * totalServings * m * qm,
+        };
+      },
       { cal: 0, p: 0, c: 0, f: 0 }
     );
   };
 
-  // Overall totals honoring per-part scaling (used for macro pills when multi-part)
-  const overall = parts.reduce(
-    (acc, part) => {
-      const t = partTotals(part);
-      return { cal: acc.cal + t.cal, p: acc.p + t.p, c: acc.c + t.c, f: acc.f + t.f };
-    },
-    { cal: 0, p: 0, c: 0, f: 0 }
-  );
-
-  const scale = (val: number | null) => {
-    if (!val) return 0;
-    return Math.round(val * multiplier * 10) / 10;
+  // Overall macro pills
+  // For single-part: use the single scaler (servings)
+  // For multi-part: sum of all parts at their own ps values
+  const overallMacros = () => {
+    if (!multiPart) {
+      const m = servings / totalServings;
+      return parts[0]?.ingredients.reduce(
+        (acc, ing) => {
+          const qm = qtyOverride[ing.id] ?? 1;
+          return {
+            cal: acc.cal + (ing.calories_per_serving || 0) * totalServings * m * qm,
+            p: acc.p + Number(ing.protein_g || 0) * totalServings * m * qm,
+            c: acc.c + Number(ing.carbs_g || 0) * totalServings * m * qm,
+            f: acc.f + Number(ing.fat_g || 0) * totalServings * m * qm,
+          };
+        },
+        { cal: 0, p: 0, c: 0, f: 0 }
+      ) ?? { cal: 0, p: 0, c: 0, f: 0 };
+    }
+    return parts.reduce(
+      (acc, part) => {
+        const t = partTotals(part);
+        return { cal: acc.cal + t.cal, p: acc.p + t.p, c: acc.c + t.c, f: acc.f + t.f };
+      },
+      { cal: 0, p: 0, c: 0, f: 0 }
+    );
   };
+
+  const overall = overallMacros();
 
   return (
     <div style={{ background: "#ffffff", minHeight: "100vh", paddingBottom: "100px" }}>
@@ -110,13 +180,13 @@ export default function RecipeDetailClient({ recipe }: { recipe: any }) {
           )}
         </div>
 
-        {/* Macro pills — scaled by servings (honors per-part scaling when multi-part) */}
+        {/* Macro pills — live sum of all parts */}
         <div style={{ display: "flex", gap: "8px", marginBottom: "20px", flexWrap: "wrap" }}>
           {[
-            { label: "cal", value: Math.round(multiPart ? overall.cal / totalServings : scale(recipe.total_calories)), color: "#C0392B", bg: "#FDF2F1" },
-            { label: "g Protein", value: Math.round(multiPart ? overall.p / totalServings : scale(recipe.total_protein_g)), color: "#2E7D52", bg: "#EEF5F1" },
-            { label: "g Carbs", value: Math.round(multiPart ? overall.c / totalServings : scale(recipe.total_carbs_g)), color: "#8B6914", bg: "#FDF8EE" },
-            { label: "g Fat", value: Math.round(multiPart ? overall.f / totalServings : scale(recipe.total_fat_g)), color: "#3D5A8A", bg: "#EEF1F8" },
+            { label: "cal", value: Math.round(overall.cal), color: "#C0392B", bg: "#FDF2F1" },
+            { label: "g Protein", value: Math.round(overall.p), color: "#2E7D52", bg: "#EEF5F1" },
+            { label: "g Carbs", value: Math.round(overall.c), color: "#8B6914", bg: "#FDF8EE" },
+            { label: "g Fat", value: Math.round(overall.f), color: "#3D5A8A", bg: "#EEF1F8" },
           ].map((m) => (
             <div key={m.label} style={{ background: m.bg, borderRadius: "10px", padding: "8px 14px", display: "flex", alignItems: "baseline", gap: "2px" }}>
               <span style={{ fontSize: "18px", fontWeight: 800, color: m.color, letterSpacing: "-0.03em", fontFamily: "Inter, sans-serif" }}>{m.value}</span>
@@ -125,56 +195,56 @@ export default function RecipeDetailClient({ recipe }: { recipe: any }) {
           ))}
         </div>
 
-        {/* Serving scaler */}
-        <div style={{
-          display: "flex", alignItems: "center", justifyContent: "space-between",
-          background: "#F5F5F5", borderRadius: "14px", padding: "12px 16px", marginBottom: "20px",
-        }}>
-          <div>
-            <p style={{ fontSize: "14px", fontWeight: 700, color: "#1A1A1A" }}>Servings</p>
-            <p style={{ fontSize: "12px", color: "#9B9B9B", marginTop: "1px" }}>
-              {servings} of {totalServings} · macros scale automatically
-            </p>
+        {/* Serving scaler — only shown for single-part recipes */}
+        {!multiPart && (
+          <div style={{
+            display: "flex", alignItems: "center", justifyContent: "space-between",
+            background: "#F5F5F5", borderRadius: "14px", padding: "12px 16px", marginBottom: "20px",
+          }}>
+            <div>
+              <p style={{ fontSize: "14px", fontWeight: 700, color: "#1A1A1A" }}>Servings</p>
+              <p style={{ fontSize: "12px", color: "#9B9B9B", marginTop: "1px" }}>
+                {servings} of {totalServings} · macros scale automatically
+              </p>
+            </div>
+            <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
+              <button
+                onClick={() => setServings(Math.max(1, servings - 1))}
+                style={{
+                  width: "32px", height: "32px", borderRadius: "50%",
+                  background: servings <= 1 ? "#E8E8E8" : "#1A1A1A",
+                  color: servings <= 1 ? "#BBBBBB" : "white",
+                  border: "none", cursor: servings <= 1 ? "not-allowed" : "pointer",
+                  fontSize: "20px", fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center",
+                  fontFamily: "Inter, sans-serif",
+                }}
+              >−</button>
+              <span style={{ fontSize: "18px", fontWeight: 800, color: "#1A1A1A", minWidth: "32px", textAlign: "center", fontFamily: "Inter, sans-serif" }}>
+                {servings}
+              </span>
+              <button
+                onClick={() => setServings(servings + 1)}
+                style={{
+                  width: "32px", height: "32px", borderRadius: "50%",
+                  background: "#1A1A1A", color: "white",
+                  border: "none", cursor: "pointer",
+                  fontSize: "20px", fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center",
+                  fontFamily: "Inter, sans-serif",
+                }}
+              >+</button>
+            </div>
           </div>
-          <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
-            <button
-              onClick={() => setServings(Math.max(1, servings - 1))}
-              style={{
-                width: "32px", height: "32px", borderRadius: "50%",
-                background: servings <= 1 ? "#E8E8E8" : "#1A1A1A",
-                color: servings <= 1 ? "#BBBBBB" : "white",
-                border: "none", cursor: servings <= 1 ? "not-allowed" : "pointer",
-                fontSize: "20px", fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center",
-                fontFamily: "Inter, sans-serif",
-              }}
-            >−</button>
-            <span style={{ fontSize: "18px", fontWeight: 800, color: "#1A1A1A", minWidth: "32px", textAlign: "center", fontFamily: "Inter, sans-serif" }}>
-              {servings}
-            </span>
-            <button
-              onClick={() => setServings(servings + 1)}
-              style={{
-                width: "32px", height: "32px", borderRadius: "50%",
-                background: "#1A1A1A", color: "white",
-                border: "none", cursor: "pointer",
-                fontSize: "20px", fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center",
-                fontFamily: "Inter, sans-serif",
-              }}
-            >+</button>
-          </div>
-        </div>
+        )}
 
         {/* Meta row */}
-        {(recipe.servings > 1 || totalTime > 0) && (
+        {totalTime > 0 && (
           <div style={{ display: "flex", gap: "20px", marginBottom: "16px" }}>
-            {totalTime > 0 && (
-              <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#9B9B9B" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
-                </svg>
-                <span style={{ fontSize: "14px", color: "#9B9B9B", fontFamily: "Inter, sans-serif" }}>{totalTime} min</span>
-              </div>
-            )}
+            <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#9B9B9B" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+              </svg>
+              <span style={{ fontSize: "14px", color: "#9B9B9B", fontFamily: "Inter, sans-serif" }}>{totalTime} min</span>
+            </div>
           </div>
         )}
 
@@ -183,16 +253,17 @@ export default function RecipeDetailClient({ recipe }: { recipe: any }) {
           <p style={{ fontSize: "14px", color: "#555555", lineHeight: 1.6, marginBottom: "24px" }}>{recipe.description}</p>
         )}
 
-        {/* Ingredients — grouped by part with independent scaling */}
+        {/* Ingredients — grouped by part, per-part scalers, inline qty editing */}
         {recipe.ingredients?.length > 0 && (
           <div style={{ marginBottom: "28px" }}>
             <h2 style={{ fontSize: "18px", fontWeight: 800, color: "#1A1A1A", letterSpacing: "-0.02em", marginBottom: "12px" }}>Ingredients</h2>
             {parts.map((part) => {
-              const m = partMultiplier(part.name);
+              const ps = getPS(part.name);
               const totals = partTotals(part);
-              const pServ = getPartServings(part.name);
               return (
                 <div key={part.name} style={{ marginBottom: multiPart ? "20px" : "0" }}>
+
+                  {/* Part header with scaler */}
                   {multiPart && (
                     <div style={{
                       display: "flex", alignItems: "center", justifyContent: "space-between",
@@ -200,61 +271,108 @@ export default function RecipeDetailClient({ recipe }: { recipe: any }) {
                     }}>
                       <div style={{ minWidth: 0 }}>
                         <p style={{ fontSize: "13px", fontWeight: 800, color: "#1A1A1A", textTransform: "uppercase", letterSpacing: "0.06em" }}>{part.name}</p>
-                        <p style={{ fontSize: "12px", color: "#9B9B9B", marginTop: "1px", fontFamily: "Inter, sans-serif" }}>
-                          {Math.round(totals.cal / totalServings)} cal · {Math.round(totals.p / totalServings)}g P per serving
+                        <p style={{ fontSize: "12px", color: ps === 0 ? "#BBBBBB" : "#9B9B9B", marginTop: "1px", fontFamily: "Inter, sans-serif" }}>
+                          {ps === 0 ? "Skipped — not counted" : `${Math.round(totals.cal)} cal · ${Math.round(totals.p)}g P total`}
                         </p>
                       </div>
                       <div style={{ display: "flex", alignItems: "center", gap: "10px", flexShrink: 0 }}>
                         <button
-                          onClick={() => setPartServingsFor(part.name, pServ - 1)}
+                          onClick={() => setPS(part.name, ps - 1)}
                           style={{
-                            width: "26px", height: "26px", borderRadius: "50%",
-                            background: pServ <= 0 ? "#E8E8E8" : "#1A1A1A",
-                            color: pServ <= 0 ? "#BBBBBB" : "white",
-                            border: "none", cursor: pServ <= 0 ? "not-allowed" : "pointer",
-                            fontSize: "16px", fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center",
+                            width: "28px", height: "28px", borderRadius: "50%",
+                            background: ps <= 0 ? "#E8E8E8" : "#1A1A1A",
+                            color: ps <= 0 ? "#BBBBBB" : "white",
+                            border: "none", cursor: ps <= 0 ? "not-allowed" : "pointer",
+                            fontSize: "18px", fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center",
                             fontFamily: "Inter, sans-serif",
                           }}
                         >−</button>
-                        <span style={{ fontSize: "14px", fontWeight: 800, color: "#1A1A1A", minWidth: "20px", textAlign: "center", fontFamily: "Inter, sans-serif" }}>
-                          {pServ}×
+                        <span style={{ fontSize: "15px", fontWeight: 800, color: ps === 0 ? "#BBBBBB" : "#1A1A1A", minWidth: "24px", textAlign: "center", fontFamily: "Inter, sans-serif" }}>
+                          {ps}×
                         </span>
                         <button
-                          onClick={() => setPartServingsFor(part.name, pServ + 1)}
+                          onClick={() => setPS(part.name, ps + 1)}
                           style={{
-                            width: "26px", height: "26px", borderRadius: "50%",
+                            width: "28px", height: "28px", borderRadius: "50%",
                             background: "#1A1A1A", color: "white",
                             border: "none", cursor: "pointer",
-                            fontSize: "16px", fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center",
+                            fontSize: "18px", fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center",
                             fontFamily: "Inter, sans-serif",
                           }}
                         >+</button>
                       </div>
                     </div>
                   )}
-                  {pServ === 0 && multiPart ? (
-                    <p style={{ fontSize: "13px", color: "#BBBBBB", fontStyle: "italic", padding: "10px 14px", fontFamily: "Inter, sans-serif" }}>
-                      Skipped — not counted in macros
-                    </p>
-                  ) : (
+
+                  {/* Ingredient rows */}
+                  {ps === 0 && multiPart ? null : (
                     part.ingredients.map((ing: any, idx: number) => {
-                      const scaledAmt = Math.round(((ing.amount || 0) * m) * 10) / 10;
+                      const amt = effectiveAmt(ing, part.name);
+                      const isEditing = editingId === ing.id;
                       return (
                         <div key={ing.id} style={{
-                          display: "flex", alignItems: "center", gap: "12px",
-                          paddingTop: "12px", paddingBottom: "12px",
+                          display: "flex", alignItems: "center", gap: "10px",
+                          paddingTop: "11px", paddingBottom: "11px",
                           borderBottom: idx < part.ingredients.length - 1 ? "1px solid #F2F2F2" : "none",
                         }}>
                           <div style={{ flex: 1, minWidth: 0 }}>
                             <p style={{ fontSize: "15px", fontWeight: 500, color: "#1A1A1A", textTransform: "capitalize" }}>{ing.name}</p>
                           </div>
-                          <p style={{ fontSize: "14px", color: "#9B9B9B", flexShrink: 0, fontFamily: "Inter, sans-serif" }}>
-                            {scaledAmt}{ing.unit}
-                          </p>
+
+                          {/* Tappable amount — becomes input on tap */}
+                          {isEditing ? (
+                            <input
+                              autoFocus
+                              type="number"
+                              value={editingVal}
+                              onChange={(e) => setEditingVal(e.target.value)}
+                              onBlur={() => commitEdit(ing, part.name)}
+                              onKeyDown={(e) => e.key === "Enter" && commitEdit(ing, part.name)}
+                              style={{
+                                width: "72px", textAlign: "right", fontSize: "14px", fontWeight: 700,
+                                color: "#1A1A1A", border: "1.5px solid #1A1A1A", borderRadius: "8px",
+                                padding: "4px 8px", fontFamily: "Inter, sans-serif", background: "white",
+                                outline: "none",
+                              }}
+                            />
+                          ) : (
+                            <button
+                              onClick={() => startEdit(ing, amt)}
+                              style={{
+                                background: "none", border: "none", cursor: "pointer", padding: "0",
+                                display: "flex", alignItems: "center", gap: "2px",
+                              }}
+                              title="Tap to edit quantity"
+                            >
+                              <span style={{ fontSize: "14px", color: "#9B9B9B", fontFamily: "Inter, sans-serif" }}>
+                                {amt}{ing.unit}
+                              </span>
+                              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#BBBBBB" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ marginLeft: "2px" }}>
+                                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                              </svg>
+                            </button>
+                          )}
+
+                          {/* Swap icon */}
                           {ing.ingredient_swaps?.length > 0 ? (
                             <SwapModal ingredient={ing} />
                           ) : (
-                            <div style={{ width: "28px" }} />
+                            /* Trash icon to remove ingredient */
+                            <button
+                              onClick={() => removeIngredient(ing.id)}
+                              style={{
+                                width: "28px", height: "28px", borderRadius: "8px",
+                                background: "#FDF2F1", border: "none", cursor: "pointer",
+                                display: "flex", alignItems: "center", justifyContent: "center",
+                                flexShrink: 0,
+                              }}
+                              title="Remove ingredient"
+                            >
+                              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#C0392B" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>
+                              </svg>
+                            </button>
                           )}
                         </div>
                       );
