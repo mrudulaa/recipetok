@@ -60,11 +60,22 @@ export async function POST(req: NextRequest) {
 ${goalContext}
 
 CRITICAL RULES FOR INGREDIENTS:
-- List EVERY individual ingredient as a SEPARATE item — never group them (e.g. "cauliflower rice" must be split into "cauliflower" + any other components used to make it)
-- If the recipe mentions a dish made of multiple components (e.g. "cauliflower fried rice"), break it into ALL its individual raw ingredients: cauliflower, eggs, carrots, peas, onion, soy sauce, garlic, ginger, etc.
-- Include ALL seasonings, sauces, oils, and garnishes as separate ingredients
-- Use realistic amounts based on typical serving sizes
-- Never use a prepared dish name as an ingredient — always use the raw components
+1. NO DUPLICATES: Each physical ingredient appears EXACTLY ONCE. If the caption lists both a brand name and a generic name for the same item (e.g. "Palmini noodles" and "pasta" when they're the same dish component), list them as separate items ONLY if the recipe genuinely uses both. Read the instructions carefully to determine this.
+2. EXCLUDE SIDE DISHES: If the caption or instructions mention a separate side dish (e.g. "mix greens and caesar salad kit" served alongside a pasta), DO NOT include the side dish ingredients in the main recipe. Only include ingredients that go INTO the main dish. Mention the side in the description instead.
+3. USE THE CAPTION'S EXACT AMOUNTS: "1 lb ground beef" = 454g, "1/2 lb pasta" = 227g, "1 jar sauce" = ~680g (24oz), "2-3 tbsp cottage cheese" = ~40g. Convert to grams. Do NOT invent amounts like "150g" when the caption specifies otherwise.
+4. AMOUNTS ARE FULL-RECIPE amounts (what the whole recipe uses), NOT per-serving.
+5. Break multi-component dishes into raw ingredients; include all seasonings, sauces, oils, garnishes.
+
+CRITICAL RULES FOR SERVINGS:
+- Estimate servings from TOTAL FOOD QUANTITY. A recipe with 1 lb beef + 1/2 lb pasta + a full jar of sauce is 4-5 servings, NOT 2.
+- Rule of thumb: one dinner serving is roughly 400-700 cal. If your total ÷ servings gives >900 cal/serving for a normal home recipe, your serving count is too LOW — increase it.
+
+CRITICAL RULES FOR NUTRITION MATH (follow this order):
+1. For each ingredient, compute nutrition for its FULL amount using standard USDA/label values (e.g. 90/10 raw ground beef = 176 cal/100g; dry pasta = 371 cal/100g; butter = 717 cal/100g; tomato-based jarred sauce = 60-90 cal/125g).
+2. Sum all ingredients = TOTAL RECIPE nutrition.
+3. DIVIDE by servings to get per-serving values.
+4. The "calories_per_serving", "protein_g", "carbs_g", "fat_g" fields on each ingredient are that ingredient's contribution PER SERVING (full-amount nutrition ÷ servings).
+5. SANITY CHECK before answering: (protein_g×4 + carbs_g×4 + fat_g×9) summed across ingredients should approximately equal the summed calories. If not, fix your numbers.
 
 You MUST respond with ONLY a valid JSON object — no markdown, no code blocks, no explanation. Start your response with { and end with }.
 
@@ -72,39 +83,39 @@ Return a JSON object with this exact structure:
 {
   "title": "Recipe name",
   "description": "1-2 sentence description",
-  "servings": 2,
+  "servings": 4,
   "prep_time_minutes": 10,
   "cook_time_minutes": 20,
   "instructions": ["Step 1...", "Step 2...", "Step 3..."],
   "tags": ["high-protein", "quick", "dinner"],
   "ingredients": [
     {
-      "name": "chicken breast",
-      "amount": 200,
+      "name": "ground beef (90/10)",
+      "amount": 454,
       "unit": "g",
-      "calories_per_serving": 220,
-      "protein_g": 41,
+      "calories_per_serving": 200,
+      "protein_g": 22.7,
       "carbs_g": 0,
-      "fat_g": 5,
+      "fat_g": 11.4,
       "is_swappable": true,
       "swaps": [
         {
-          "swap_name": "tofu",
-          "swap_amount": 200,
+          "swap_name": "ground turkey (93/7)",
+          "swap_amount": 454,
           "swap_unit": "g",
-          "calories_per_serving": 160,
-          "protein_g": 17,
-          "carbs_g": 4,
+          "calories_per_serving": 170,
+          "protein_g": 21.5,
+          "carbs_g": 0,
           "fat_g": 9,
           "goal_benefit": "lower_calorie",
-          "reason": "Lower calorie plant-based option"
+          "reason": "Leaner protein with fewer calories"
         }
       ]
     }
   ]
 }
 
-Be accurate with nutrition data. For each swappable ingredient, provide 1-3 goal-aware swaps based on the user's goals.`
+Note in the example: amount=454 is the FULL recipe amount; calories_per_serving=200 is 454g × 176cal/100g ÷ 4 servings. For each swappable ingredient, provide 1-3 goal-aware swaps based on the user's goals.`
         },
         {
           role: "user",
