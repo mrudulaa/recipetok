@@ -3,6 +3,17 @@ import { useState } from "react";
 import Link from "next/link";
 import SwapModal from "./SwapModal";
 
+async function shareRecipe(recipeId: string): Promise<string> {
+  const res = await fetch("/api/recipe/share", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ recipeId, makePublic: true }),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || "Failed to share");
+  return data.shareUrl as string;
+}
+
 export default function RecipeDetailClient({ recipe }: { recipe: any }) {
   const totalServings = recipe.servings || 1;
   const [servings, setServings] = useState(1);
@@ -22,6 +33,39 @@ export default function RecipeDetailClient({ recipe }: { recipe: any }) {
 
   const [parts, setParts] = useState(() => buildParts(recipe.ingredients || []));
   const multiPart = parts.length > 1;
+
+  // Share state
+  const [sharing, setSharing] = useState(false);
+  const [shareUrl, setShareUrl] = useState<string | null>(null);
+  const [shareCopied, setShareCopied] = useState(false);
+
+  const handleShare = async () => {
+    setSharing(true);
+    try {
+      const url = await shareRecipe(recipe.id);
+      setShareUrl(url);
+      // Try native share sheet first (mobile)
+      if (typeof navigator !== "undefined" && navigator.share) {
+        await navigator.share({
+          title: recipe.title,
+          text: `Check out this recipe: ${recipe.title} — ${recipe.total_calories} cal, ${recipe.total_protein_g}g protein`,
+          url,
+        });
+      } else {
+        // Fallback: copy to clipboard
+        await navigator.clipboard.writeText(url);
+        setShareCopied(true);
+        setTimeout(() => setShareCopied(false), 2500);
+      }
+    } catch (err: any) {
+      if (err?.name !== "AbortError") {
+        // User cancelled native share — still show the URL
+        console.error("Share error:", err);
+      }
+    } finally {
+      setSharing(false);
+    }
+  };
 
   // Per-part serving counts (default = 1 for single-part, 1 for each part in multi-part)
   const [partServings, setPartServings] = useState<Record<string, number>>({});
@@ -149,16 +193,35 @@ export default function RecipeDetailClient({ recipe }: { recipe: any }) {
             <polyline points="15 18 9 12 15 6"/>
           </svg>
         </Link>
-        <button style={{
-          position: "absolute", top: "16px", right: "16px",
-          width: "40px", height: "40px", borderRadius: "50%",
-          background: "rgba(255,255,255,0.92)", backdropFilter: "blur(8px)",
-          display: "flex", alignItems: "center", justifyContent: "center",
-          border: "none", cursor: "pointer", boxShadow: "0 2px 8px rgba(0,0,0,0.15)",
-        }}>
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#1A1A1A" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
-          </svg>
+        <button
+          onClick={handleShare}
+          disabled={sharing}
+          style={{
+            position: "absolute", top: "16px", right: "16px",
+            background: "rgba(255,255,255,0.92)", backdropFilter: "blur(8px)",
+            borderRadius: "100px", padding: "8px 14px",
+            border: "none", cursor: sharing ? "wait" : "pointer",
+            display: "flex", alignItems: "center", gap: "6px",
+            boxShadow: "0 2px 8px rgba(0,0,0,0.15)",
+            opacity: sharing ? 0.7 : 1,
+          }}
+        >
+          {shareCopied ? (
+            <>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#2E7D52" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+              <span style={{ fontSize: "13px", fontWeight: 700, color: "#2E7D52", fontFamily: "Inter, sans-serif" }}>Copied!</span>
+            </>
+          ) : (
+            <>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#1A1A1A" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/>
+                <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/>
+              </svg>
+              <span style={{ fontSize: "13px", fontWeight: 700, color: "#1A1A1A", fontFamily: "Inter, sans-serif" }}>
+                {sharing ? "Sharing..." : "Share"}
+              </span>
+            </>
+          )}
         </button>
       </div>
 
@@ -179,6 +242,23 @@ export default function RecipeDetailClient({ recipe }: { recipe: any }) {
             </a>
           )}
         </div>
+
+        {/* Share URL banner — shown after sharing on desktop (mobile uses native sheet) */}
+        {shareUrl && !shareCopied && typeof navigator !== "undefined" && !navigator.share && (
+          <div style={{
+            background: "#EEF5F1", border: "1px solid #C8E6D8", borderRadius: "12px",
+            padding: "12px 14px", marginBottom: "16px",
+            display: "flex", alignItems: "center", gap: "10px",
+          }}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#2E7D52" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="20 6 9 17 4 12"/>
+            </svg>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <p style={{ fontSize: "13px", fontWeight: 700, color: "#2E7D52", marginBottom: "2px", fontFamily: "Inter, sans-serif" }}>Link copied!</p>
+              <p style={{ fontSize: "12px", color: "#555555", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontFamily: "Inter, sans-serif" }}>{shareUrl}</p>
+            </div>
+          </div>
+        )}
 
         {/* Macro pills — live sum of all parts */}
         <div style={{ display: "flex", gap: "8px", marginBottom: "20px", flexWrap: "wrap" }}>

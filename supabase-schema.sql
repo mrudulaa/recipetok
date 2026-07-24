@@ -33,8 +33,12 @@ create table if not exists recipes (
   total_fat_g numeric(6,1),
   instructions text[], -- array of steps
   tags text[],
-  created_at timestamptz default now()
+  created_at timestamptz default now(),
+  is_public boolean default false -- when true, recipe is accessible at /r/[id] without auth
 );
+
+-- Migration for existing databases:
+-- alter table recipes add column if not exists is_public boolean default false;
 
 -- Ingredients (linked to recipes)
 create table if not exists ingredients (

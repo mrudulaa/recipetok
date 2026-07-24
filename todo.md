@@ -13,6 +13,10 @@
 - [x] Multi-part recipes: independent serving scaling per part
 - [x] Swaps: show calorie/macro delta clearly on swap options
 
-- [ ] Remove top-level serving scaler for multi-part recipes (per-part scalers drive everything)
-- [ ] Add inline ingredient quantity editing (tap amount to edit, trash to remove)
-- [ ] Fix macro pills to be pure sum of per-part scaled totals (no stale recipe.total_* for multi-part)
+- [x] Remove top-level serving scaler for multi-part recipes (per-part scalers drive everything)
+- [x] Add inline ingredient quantity editing (tap amount to edit, trash to remove)
+- [x] Fix macro pills to be pure sum of per-part scaled totals (no stale recipe.total_* for multi-part)
+
+- [ ] Add is_public column to recipes table (DB migration needed)
+- [ ] Create public recipe page at /r/[id] (no auth required)
+- [ ] Add share button to recipe detail page (native share sheet + copy link)
